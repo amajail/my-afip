@@ -1,0 +1,25 @@
+{
+  "name": "my-afip",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "process": "node src/index.js process",
+    "orders": "node src/index.js orders",
+    "status": "node src/index.js status",
+    "manual": "node src/index.js manual",
+    "sample": "node src/index.js sample",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@afipsdk/afip.js": "^1.2.0",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.2.2",
+    "sqlite3": "^5.1.7"
+  }
+}
