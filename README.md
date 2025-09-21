@@ -60,7 +60,7 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
 
 ```bash
 # AFIP Configuration
-AFIP_CUIT=20283536638                    # Your AFIP CUIT (without hyphens)
+AFIP_CUIT=20283336668                    # Your AFIP CUIT (without hyphens)
 AFIP_CERT_PATH=./certificates/cert.crt   # Path to AFIP certificate
 AFIP_KEY_PATH=./certificates/private.key  # Path to private key
 AFIP_ENVIRONMENT=production              # 'testing' or 'production'
