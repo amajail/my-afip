@@ -377,15 +377,16 @@ class AfipInvoiceApp {
         return;
       }
 
-      // Display detailed order list
+
+      // Display detailed order list with full order number
       console.log(`\n📋 Detailed Orders (${orders.length} orders):`);
-      console.log('-'.repeat(120));
-      console.log('Date       | Order Number           | Amount    | Status    | CAE/Error');
-      console.log('-'.repeat(120));
+      console.log('-'.repeat(140));
+      console.log('Date       | Order Number                      | Amount    | Status    | CAE/Error');
+      console.log('-'.repeat(140));
 
       orders.forEach(order => {
         const date = order.order_date;
-        const orderNum = order.order_number.substring(0, 20) + '...';
+        const orderNum = order.order_number.padEnd(30); // Show full order number, padded for alignment
         const amount = `$${order.total_price.toLocaleString()}`.padEnd(9);
         const status = order.status.padEnd(9);
 
@@ -403,7 +404,7 @@ class AfipInvoiceApp {
         console.log(`${date} | ${orderNum} | ${amount} | ${status} | ${result}`);
       });
 
-      console.log('-'.repeat(120));
+      console.log('-'.repeat(140));
 
       // Processing rate
       const processingRate = stats.total_orders > 0
