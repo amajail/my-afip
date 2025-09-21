@@ -114,18 +114,23 @@ npm run orders
 
 **Workflow details:**
 1. **Fetches orders** from Binance P2P API
-2. **Converts data** from USDT trading format to ARS invoice format
-3. **Prevents duplicates** using SQLite database tracking
-4. **Generates CSV** file for AFIP processing
-5. **Submits invoices** to AFIP WSFEv1 service automatically
+2. **Stores directly** in SQLite database with automatic conversion
+3. **Prevents duplicates** using database-driven order tracking
+4. **Processes directly** from database to AFIP WSFEv1 service
+5. **Tracks results** in database with comprehensive status tracking
 
-### Option 2: Manual File Processing
+**No intermediate files needed** - everything runs database-to-AFIP direct!
 
+### Option 2: Legacy File Processing (Optional)
+
+For users with existing JSON order files:
 1. **Add order files** to `./orders/` directory (JSON format from crypto exchange)
-2. **Process orders** automatically:
+2. **Process orders** (automatically uses database-first approach):
    ```bash
    npm run orders
    ```
+
+**Note**: The system now prioritizes database processing over file processing for better performance.
 
 ### Manual Invoice Tracking
 
@@ -142,9 +147,16 @@ Check processing status:
 npm run status
 ```
 
-### Processing CSV Files
+### Processing from Database
 
-Process invoices from CSV:
+Process unprocessed orders directly from database:
+```bash
+npm run orders
+```
+
+### Legacy CSV Processing (Optional)
+
+For backward compatibility, CSV processing is still supported:
 ```bash
 npm run process data/invoices.csv
 ```
@@ -168,11 +180,12 @@ The application uses SQLite (`data/afip-orders.db`) with two main tables:
 - **voucher_number**: AFIP voucher number
 - **error_message**: Details of any processing failures
 
-### Duplicate Prevention Logic
-1. **Order Insertion**: All orders stored on first encounter
-2. **Processing Check**: Only orders NOT marked as processed are included for invoice generation
-3. **Retry Capability**: Failed orders (401 auth errors) can be retried
+### Streamlined Processing Logic
+1. **Direct Storage**: Orders stored directly from Binance API to database
+2. **Smart Processing**: Only unprocessed orders are sent to AFIP (automatic duplicate prevention)
+3. **Retry Capability**: Failed orders (401 auth errors) remain unprocessed for retry
 4. **Manual Override**: Orders can be marked as manually processed via AFIP portal
+5. **No File Dependencies**: Entire workflow operates database-to-AFIP directly
 
 ## 🔒 Security Features
 
@@ -206,10 +219,9 @@ my-afip/
 │   ├── convertOrders.js             # Order conversion utility
 │   └── fetchBinanceOrders.js        # Direct Binance API fetch script
 ├── data/                            # Generated data (gitignored)
-│   ├── afip-orders.db              # SQLite database
-│   ├── orders-invoices.csv         # Generated invoice CSV
+│   ├── afip-orders.db              # SQLite database (primary data store)
 │   └── processed/                   # AFIP processing results
-├── orders/                          # Fetched order files (gitignored)
+├── orders/                          # Legacy order files (optional, gitignored)
 ├── certificates/                    # AFIP certificates (gitignored)
 │   ├── cert.crt                    # AFIP production certificate
 │   └── private.key                 # Private key
