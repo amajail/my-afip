@@ -248,6 +248,71 @@ class Database {
     });
   }
 
+  async getCurrentMonthOrders() {
+    const sql = `
+      SELECT
+        order_number,
+        order_date,
+        amount,
+        price,
+        total_price,
+        asset,
+        fiat,
+        trade_type,
+        create_time,
+        CASE
+          WHEN processed_at IS NOT NULL THEN 'Processed'
+          ELSE 'Pending'
+        END as status,
+        processing_method,
+        success,
+        cae,
+        voucher_number,
+        error_message,
+        processed_at
+      FROM orders
+      WHERE strftime('%Y-%m', order_date) = strftime('%Y-%m', 'now')
+      ORDER BY order_date DESC, create_time DESC
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
+  async getCurrentMonthStats() {
+    const sql = `
+      SELECT
+        COUNT(*) as total_orders,
+        SUM(CASE WHEN processed_at IS NOT NULL THEN 1 ELSE 0 END) as processed_orders,
+        SUM(CASE WHEN processed_at IS NULL THEN 1 ELSE 0 END) as pending_orders,
+        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_orders,
+        SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed_orders,
+        SUM(total_price) as total_amount,
+        SUM(CASE WHEN success = 1 THEN total_price ELSE 0 END) as invoiced_amount,
+        MIN(order_date) as earliest_date,
+        MAX(order_date) as latest_date
+      FROM orders
+      WHERE strftime('%Y-%m', order_date) = strftime('%Y-%m', 'now')
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
   async getOrderStats() {
     const sql = `
       SELECT

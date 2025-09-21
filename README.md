@@ -142,10 +142,24 @@ node src/index.js manual 22798407061264470016 12345678901234 123 "Manual via AFI
 
 ### Status and Reporting
 
-Check processing status:
+Check overall processing status:
 ```bash
 npm run status
 ```
+
+Get detailed current month orders report:
+```bash
+npm run report
+# or
+npm run month-report
+```
+
+The month report shows:
+- 📊 Summary statistics (total, processed, pending, successful, failed orders)
+- 💰 Financial summary (total amount, invoiced amount)
+- 📋 Detailed order list with individual status and CAE numbers
+- 📈 Processing and success rates
+- 💡 Next action recommendations
 
 ### Processing from Database
 
@@ -238,6 +252,8 @@ my-afip/
 | `npm run binance:auto` | **Full automation**: Fetch from Binance + auto-process to AFIP |
 | `npm run orders` | Process all existing order files to AFIP invoices |
 | `npm run status` | Check database status and statistics |
+| `npm run report` | **Current month orders report** with detailed status |
+| `npm run month-report` | Alias for current month report |
 | `npm run manual` | Mark order as manually processed |
 | `npm run process [file]` | Process invoices from CSV file |
 | `npm run sample` | Generate sample CSV file |
@@ -253,6 +269,9 @@ npm run binance:fetch 7 SELL
 
 # Fully automated: fetch + process + create invoices
 npm run binance:auto 30 SELL
+
+# Get detailed current month report
+npm run report
 
 # Advanced usage with direct script
 node scripts/fetchBinanceOrders.js recent 7 SELL

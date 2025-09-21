@@ -114,6 +114,16 @@ class DatabaseOrderTracker {
     return await this.db.getOrdersByStatus(success);
   }
 
+  async getCurrentMonthOrders() {
+    await this.initialize();
+    return await this.db.getCurrentMonthOrders();
+  }
+
+  async getCurrentMonthStats() {
+    await this.initialize();
+    return await this.db.getCurrentMonthStats();
+  }
+
   async close() {
     if (this.db) {
       await this.db.close();

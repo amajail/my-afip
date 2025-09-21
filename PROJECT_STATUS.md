@@ -30,6 +30,7 @@ Successfully built a complete AFIP electronic invoicing system for cryptocurrenc
 - ✅ Duplicate prevention based on processing status
 - ✅ Manual invoice marking for AFIP portal usage
 - ✅ Comprehensive statistics and reporting
+- ✅ **Current month orders report** with detailed status and financial summary
 - ✅ Failed order retry capability
 - ✅ Audit trail with timestamps and processing methods
 
@@ -165,6 +166,9 @@ BINANCE_SECRET_KEY=JGyjC39yGuKvos0TGf9ZUjXvkezFrJvra5d6GKgAkI16SyOmjC1IJX64Jci5V
 # Test full automation (recommended)
 npm run binance:auto
 
+# Get detailed current month report
+npm run report
+
 # Alternative: process existing orders only
 npm run orders
 
@@ -187,6 +191,7 @@ npm run process ./data/orders-invoices.csv  # Test AFIP only
 ### System Achievements
 - ✅ **Streamlined Architecture**: Direct Database → AFIP processing (no intermediate files)
 - ✅ **14 Orders Processed**: Direct database-to-AFIP workflow tested successfully
+- ✅ **Current Month Reporting**: Comprehensive order status and financial reporting
 - ✅ **Zero File Dependencies**: Eliminated JSON/CSV bottlenecks completely
 - ✅ **Performance Optimized**: Pure database operations with ACID compliance
 - ✅ **Smart Retry Logic**: Failed orders remain in database for automatic retry
