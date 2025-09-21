@@ -2,10 +2,12 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const AfipService = require('./services/AfipService');
+const BinanceService = require('./services/BinanceService');
 const CSVParser = require('./utils/csvParser');
 const OrderTracker = require('./utils/orderTracker');
 const DatabaseOrderTracker = require('./utils/DatabaseOrderTracker');
 const { processOrderFiles } = require('../scripts/convertOrders');
+const BinanceOrderFetcher = require('../scripts/fetchBinanceOrders');
 
 class AfipInvoiceApp {
   constructor() {
@@ -15,10 +17,16 @@ class AfipInvoiceApp {
       keyPath: process.env.AFIP_KEY_PATH,
       environment: process.env.AFIP_ENVIRONMENT || 'testing',
       inputPath: process.env.INVOICE_INPUT_PATH || './data/invoices.csv',
-      outputPath: process.env.INVOICE_OUTPUT_PATH || './data/processed'
+      outputPath: process.env.INVOICE_OUTPUT_PATH || './data/processed',
+      binanceApiKey: process.env.BINANCE_API_KEY,
+      binanceSecretKey: process.env.BINANCE_SECRET_KEY
     };
 
     this.afipService = new AfipService(this.config);
+    this.binanceService = new BinanceService({
+      apiKey: this.config.binanceApiKey,
+      secretKey: this.config.binanceSecretKey
+    });
   }
 
   async initialize() {
@@ -188,6 +196,63 @@ class AfipInvoiceApp {
     }
   }
 
+  async testBinanceConnection() {
+    if (!this.config.binanceApiKey || !this.config.binanceSecretKey) {
+      console.log('❌ Binance API credentials not configured');
+      console.log('Please set BINANCE_API_KEY and BINANCE_SECRET_KEY in your .env file');
+      return;
+    }
+
+    try {
+      this.binanceService.initialize();
+      const result = await this.binanceService.testConnection();
+
+      if (result.success) {
+        console.log('✅ Binance API connection successful');
+        console.log('🔑 API Key configured correctly');
+      } else {
+        console.log('❌ Binance API connection failed');
+        console.log(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.log('❌ Binance API test failed');
+      console.log(`Error: ${error.message}`);
+    }
+  }
+
+  async fetchBinanceOrders(days = 7, tradeType = 'SELL', autoProcess = false) {
+    console.log('📡 Fetching orders from Binance API...');
+
+    const fetcher = new BinanceOrderFetcher();
+
+    try {
+      await fetcher.initialize();
+
+      const result = await fetcher.fetchAndProcess({
+        days,
+        tradeType,
+        autoProcess
+      });
+
+      if (result.success) {
+        console.log(`✅ Successfully fetched ${result.ordersCount} orders`);
+
+        if (autoProcess && result.processed) {
+          console.log('📊 Processing summary:');
+          console.log(`  - New orders: ${result.processed.newOrders?.length || 0}`);
+          console.log(`  - Duplicates: ${result.processed.duplicates?.length || 0}`);
+        }
+      } else {
+        console.log(`❌ Failed to fetch orders: ${result.error}`);
+      }
+
+      return result;
+    } catch (error) {
+      console.log(`❌ Binance fetch error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
   async processOrders() {
     console.log('🔄 Converting cryptocurrency orders to invoices...');
 
@@ -292,6 +357,45 @@ async function main() {
         await app.markManualInvoice(orderNumber, cae, parseInt(voucherNumber), notes);
         break;
 
+      case 'binance-test':
+        await app.testBinanceConnection();
+        break;
+
+      case 'binance-fetch':
+        const fetchDays = parseInt(args[1]) || 7;
+        const fetchTradeType = args[2] || 'SELL';
+        const autoProcess = args[3] === 'true' || args[3] === 'auto';
+
+        await app.fetchBinanceOrders(fetchDays, fetchTradeType, autoProcess);
+        break;
+
+      case 'binance-auto':
+        const autoDays = parseInt(args[1]) || 7;
+        const autoTradeType = args[2] || 'SELL';
+
+        console.log('🤖 Automatic mode: Fetch from Binance + Process to AFIP');
+        await app.fetchBinanceOrders(autoDays, autoTradeType, true);
+        break;
+
+      case 'binance-month':
+        const monthTradeType = args[1] || 'SELL';
+
+        console.log('📅 Fetching current month orders from Binance...');
+        const fetcher = new BinanceOrderFetcher();
+        await fetcher.initialize();
+        const result = await fetcher.fetchCurrentMonthOrders(monthTradeType);
+
+        if (result.success && result.ordersCount > 0) {
+          console.log(`✅ Fetched ${result.ordersCount} orders for ${result.month}`);
+          console.log('🔄 Processing to invoices...');
+          await app.processOrders();
+        } else if (result.success) {
+          console.log(`ℹ️  No orders found for ${result.month}`);
+        } else {
+          console.log(`❌ Failed: ${result.error}`);
+        }
+        break;
+
       case 'sample':
         await app.generateSampleData();
         break;
@@ -302,7 +406,16 @@ async function main() {
         console.log('  node src/index.js orders                         - Convert orders JSON to invoices and process');
         console.log('  node src/index.js status                         - Check processed orders status');
         console.log('  node src/index.js manual <order> <cae> <voucher> - Mark order as manually processed');
+        console.log('  node src/index.js binance-test                   - Test Binance API connection');
+        console.log('  node src/index.js binance-fetch [days] [type]    - Fetch orders from Binance API');
+        console.log('  node src/index.js binance-month [type]           - Fetch current month orders');
+        console.log('  node src/index.js binance-auto [days] [type]     - Fetch from Binance + auto-process');
         console.log('  node src/index.js sample                         - Generate sample CSV');
+        console.log('');
+        console.log('Binance Examples:');
+        console.log('  node src/index.js binance-fetch 7 SELL          - Fetch last 7 days of SELL orders');
+        console.log('  node src/index.js binance-month SELL            - Current month SELL orders + process');
+        console.log('  node src/index.js binance-auto 30 SELL          - Fetch last 30 days + auto-process');
         break;
     }
   } catch (error) {
