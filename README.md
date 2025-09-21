@@ -4,12 +4,14 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
 
 ## ⚡ Features
 
-- **🔄 Automatic Order Processing**: Converts cryptocurrency trading JSON data to AFIP invoices
+- **📡 Binance API Integration**: Automatically fetch P2P trading orders from Binance
+- **🔄 Automatic Order Processing**: Converts cryptocurrency trading data to AFIP invoices
 - **🛡️ Duplicate Prevention**: SQLite database prevents duplicate invoice creation
 - **🔧 Manual Invoice Tracking**: Mark orders as manually processed via AFIP portal
 - **📊 Comprehensive Reporting**: Database-powered statistics and audit trails
 - **🔐 Secure Configuration**: Environment-based configuration with sensitive data protection
 - **✅ AFIP WSFEv1 Compliance**: Full support for electronic invoicing regulations
+- **🤖 Full Automation**: From Binance API to AFIP invoices in one command
 
 ## 🚀 Quick Start
 
@@ -18,6 +20,7 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
 - Node.js 16+
 - AFIP CUIT (tax ID)
 - For production: AFIP digital certificates
+- For Binance integration: Binance API key and secret
 
 ### Installation
 
@@ -33,9 +36,17 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
    ```
 
 3. **Configure environment**
+   Create `.env` file with your configuration:
    ```bash
-   cp .env.example .env
-   # Edit .env with your AFIP CUIT and settings
+   # AFIP Configuration
+   AFIP_CUIT=your_cuit_here
+   AFIP_CERT_PATH=./certificates/cert.crt
+   AFIP_KEY_PATH=./certificates/private.key
+   AFIP_ENVIRONMENT=production
+
+   # Binance API Configuration
+   BINANCE_API_KEY=your_binance_api_key
+   BINANCE_SECRET_KEY=your_binance_secret_key
    ```
 
 4. **Test the application**
@@ -48,25 +59,67 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
 ### Environment Variables (`.env`)
 
 ```bash
-# Your AFIP CUIT (without hyphens) - REPLACE WITH YOUR ACTUAL CUIT
-AFIP_CUIT=your_cuit_here
+# AFIP Configuration
+AFIP_CUIT=20283536638                    # Your AFIP CUIT (without hyphens)
+AFIP_CERT_PATH=./certificates/cert.crt   # Path to AFIP certificate
+AFIP_KEY_PATH=./certificates/private.key  # Path to private key
+AFIP_ENVIRONMENT=production              # 'testing' or 'production'
 
-# Environment: 'testing' for homologation, 'production' for live
-AFIP_ENVIRONMENT=testing
+# Application Settings
+LOG_LEVEL=info
+INVOICE_INPUT_PATH=./data/invoices.csv
+INVOICE_OUTPUT_PATH=./data/processed
 
-# AFIP Certificate paths (production only)
-AFIP_CERT_PATH=./certificates/cert.crt
-AFIP_KEY_PATH=./certificates/private.key
+# Binance API Configuration (required for automatic order fetching)
+BINANCE_API_KEY=your_binance_api_key
+BINANCE_SECRET_KEY=your_binance_secret_key
 ```
 
-### Testing vs Production
+### Environment Modes
 
 - **Testing**: Uses AFIP homologation environment, no certificates needed
 - **Production**: Requires valid AFIP certificates associated with "wsfe" service
 
+### Binance API Setup
+
+1. **Create API Key**: Go to Binance.com → Account → API Management
+2. **Permissions**: Enable "Enable Reading" permission only
+3. **Security**: Restrict to your IP address for additional security
+4. **Copy Keys**: Add to `.env` file as shown above
+
 ## 🔧 Usage
 
-### Processing Cryptocurrency Orders
+### Option 1: Automatic Binance Integration (Recommended)
+
+**Full automation workflow:**
+```bash
+# Test Binance API connection
+npm run binance:test
+
+# Fetch recent orders and auto-process to AFIP invoices
+npm run binance:auto    # Fetches last 7 days + processes all existing orders
+```
+
+**Manual control:**
+```bash
+# Fetch current month SELL orders only
+npm run binance:month
+
+# Fetch specific time period
+npm run binance:fetch 30 SELL  # Last 30 days of SELL orders
+
+# Process all existing orders
+npm run orders
+```
+
+**Workflow details:**
+1. **Fetches orders** from Binance P2P API
+2. **Converts data** from USDT trading format to ARS invoice format
+3. **Prevents duplicates** using SQLite database tracking
+4. **Generates CSV** file for AFIP processing
+5. **Submits invoices** to AFIP WSFEv1 service automatically
+
+### Option 2: Manual File Processing
 
 1. **Add order files** to `./orders/` directory (JSON format from crypto exchange)
 2. **Process orders** automatically:
@@ -98,12 +151,28 @@ npm run process data/invoices.csv
 
 ## 📊 Database Schema
 
-The application uses SQLite to track:
+The application uses SQLite (`data/afip-orders.db`) with two main tables:
 
-- **Orders**: Cryptocurrency trading data with processing status
-- **Processing Method**: Automatic vs manual invoice creation
-- **Results**: CAE numbers, voucher numbers, error messages
-- **Audit Trail**: Timestamps and processing history
+### Orders Table
+- **order_number**: Unique identifier from Binance (prevents duplicates)
+- **amount, price, total_price**: Trading amounts in USDT and ARS
+- **asset, fiat**: Currency pair (USDT/ARS)
+- **trade_type**: SELL/BUY (currently focuses on SELL orders)
+- **create_time**: Original transaction timestamp
+- **buyer/seller_nickname**: Trading counterparties
+
+### Invoices Table (linked to orders)
+- **processing_method**: 'automatic' or 'manual'
+- **success**: Boolean status of AFIP submission
+- **cae**: CAE number from successful AFIP invoices
+- **voucher_number**: AFIP voucher number
+- **error_message**: Details of any processing failures
+
+### Duplicate Prevention Logic
+1. **Order Insertion**: All orders stored on first encounter
+2. **Processing Check**: Only orders NOT marked as processed are included for invoice generation
+3. **Retry Capability**: Failed orders (401 auth errors) can be retried
+4. **Manual Override**: Orders can be marked as manually processed via AFIP portal
 
 ## 🔒 Security Features
 
@@ -123,19 +192,27 @@ The application uses SQLite to track:
 ```
 my-afip/
 ├── src/
-│   ├── services/AfipService.js      # AFIP API integration
+│   ├── services/
+│   │   ├── AfipService.js           # AFIP WSFEv1 API integration
+│   │   └── BinanceService.js        # Binance P2P API integration
 │   ├── models/Invoice.js            # Invoice data model
-│   ├── utils/csvParser.js           # CSV file processing
-│   ├── utils/DatabaseOrderTracker.js # Database operations
-│   └── database/Database.js         # SQLite database layer
+│   ├── utils/
+│   │   ├── csvParser.js             # CSV file processing
+│   │   ├── DatabaseOrderTracker.js  # Database operations
+│   │   └── orderTracker.js          # Legacy file-based tracking
+│   ├── database/Database.js         # SQLite database layer
+│   └── index.js                     # Main application entry point
 ├── scripts/
-│   └── convertOrders.js             # Order conversion utility
-├── examples/
-│   ├── orders/sample-orders.json    # Example order format
-│   └── certificates/README.md       # Certificate guide
+│   ├── convertOrders.js             # Order conversion utility
+│   └── fetchBinanceOrders.js        # Direct Binance API fetch script
 ├── data/                            # Generated data (gitignored)
-├── orders/                          # Your order files (gitignored)
+│   ├── afip-orders.db              # SQLite database
+│   ├── orders-invoices.csv         # Generated invoice CSV
+│   └── processed/                   # AFIP processing results
+├── orders/                          # Fetched order files (gitignored)
 ├── certificates/                    # AFIP certificates (gitignored)
+│   ├── cert.crt                    # AFIP production certificate
+│   └── private.key                 # Private key
 └── .env                            # Configuration (gitignored)
 ```
 
@@ -143,18 +220,46 @@ my-afip/
 
 | Command | Description |
 |---------|-------------|
-| `npm run orders` | Process cryptocurrency orders to AFIP invoices |
+| `npm run binance:test` | Test Binance API connection |
+| `npm run binance:fetch` | Fetch orders from Binance API (recent) |
+| `npm run binance:month` | Fetch current month SELL orders |
+| `npm run binance:auto` | **Full automation**: Fetch from Binance + auto-process to AFIP |
+| `npm run orders` | Process all existing order files to AFIP invoices |
 | `npm run status` | Check database status and statistics |
 | `npm run manual` | Mark order as manually processed |
 | `npm run process [file]` | Process invoices from CSV file |
 | `npm run sample` | Generate sample CSV file |
 
+### Binance Integration Examples
+
+```bash
+# Test your API keys
+npm run binance:test
+
+# Fetch last 7 days of SELL orders
+npm run binance:fetch 7 SELL
+
+# Fully automated: fetch + process + create invoices
+npm run binance:auto 30 SELL
+
+# Advanced usage with direct script
+node scripts/fetchBinanceOrders.js recent 7 SELL
+node scripts/fetchBinanceOrders.js range 2025-09-15 2025-09-20 SELL
+```
+
 ## 🔍 Troubleshooting
 
-### Authentication Issues (401 Error)
+### AFIP Authentication Issues (401 Error)
 - Verify AFIP certificate is associated with "wsfe" service
 - Allow 24-48 hours for service propagation after certificate creation
 - Check CUIT in `.env` file matches certificate
+
+### Binance API Issues
+- **API Key Errors**: Verify `BINANCE_API_KEY` and `BINANCE_SECRET_KEY` in `.env`
+- **Permission Errors**: Ensure API key has "Enable Reading" permission
+- **Rate Limits**: Binance limits API calls - the app automatically handles this
+- **Date Range**: Maximum 30 days per request, 6 months historical data limit
+- **Test Connection**: Always run `npm run binance:test` first
 
 ### Duplicate Detection
 - Orders are tracked by unique `orderNumber` in database

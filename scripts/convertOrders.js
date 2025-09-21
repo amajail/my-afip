@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const OrderTracker = require('../src/utils/orderTracker');
 const DatabaseOrderTracker = require('../src/utils/DatabaseOrderTracker');
+const BinanceService = require('../src/services/BinanceService');
 
 function convertTimestamp(timestamp) {
   return new Date(timestamp).toISOString().split('T')[0];
@@ -43,6 +44,7 @@ async function processOrderFiles() {
 
   const orderFiles = fs.readdirSync(ordersDir).filter(file => file.endsWith('.json'));
   const dbTracker = new DatabaseOrderTracker();
+  const binanceService = new BinanceService({}); // Empty config since we only need conversion method
 
   let allOrders = [];
   let processedCount = 0;
@@ -52,11 +54,17 @@ async function processOrderFiles() {
       const filePath = path.join(ordersDir, file);
       const orderData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
-      const orders = Array.isArray(orderData) ? orderData : orderData.data || [];
-      allOrders = allOrders.concat(orders);
-      processedCount += orders.length;
+      const rawOrders = Array.isArray(orderData) ? orderData : orderData.data || [];
 
-      console.log(`✓ Processed ${file}: ${orders.length} orders`);
+      // Convert raw Binance orders to internal format with calculated price field
+      const convertedOrders = rawOrders.map(order =>
+        binanceService.convertP2POrderToInternalFormat(order)
+      );
+
+      allOrders = allOrders.concat(convertedOrders);
+      processedCount += convertedOrders.length;
+
+      console.log(`✓ Processed ${file}: ${convertedOrders.length} orders`);
     } catch (error) {
       console.error(`✗ Error processing ${file}:`, error.message);
     }
