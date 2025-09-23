@@ -37,8 +37,8 @@ class DatabaseOrderTracker {
     // First, insert/update all orders in database
     await this.insertOrders(orders);
 
-    // Get processed orders
-    const processedOrders = await this.db.getProcessedOrders();
+    // Get successfully processed orders only (not failed ones)
+    const processedOrders = await this.db.getSuccessfullyProcessedOrders();
     const processedOrderNumbers = new Set(processedOrders.map(o => o.order_number));
 
     // Filter orders

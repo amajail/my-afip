@@ -205,6 +205,25 @@ class Database {
     });
   }
 
+  async getSuccessfullyProcessedOrders() {
+    const sql = `
+      SELECT order_number, processed_at, processing_method, success, cae, voucher_number, error_message
+      FROM orders
+      WHERE processed_at IS NOT NULL AND success = 1
+      ORDER BY processed_at DESC
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
   async getOrdersByStatus(success = null) {
     let sql = `
       SELECT * FROM orders
@@ -233,7 +252,7 @@ class Database {
   async getUnprocessedOrders() {
     const sql = `
       SELECT * FROM orders
-      WHERE processed_at IS NULL
+      WHERE processed_at IS NULL OR (processed_at IS NOT NULL AND success = 0)
       ORDER BY create_time ASC
     `;
 
@@ -261,7 +280,8 @@ class Database {
         trade_type,
         create_time,
         CASE
-          WHEN processed_at IS NOT NULL THEN 'Processed'
+          WHEN processed_at IS NOT NULL AND success = 1 THEN 'Success'
+          WHEN processed_at IS NOT NULL AND success = 0 THEN 'Failed'
           ELSE 'Pending'
         END as status,
         processing_method,
