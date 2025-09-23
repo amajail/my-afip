@@ -100,7 +100,7 @@ class Database {
 
   async insertOrder(orderData) {
     const sql = `
-      INSERT OR REPLACE INTO orders (
+      INSERT OR IGNORE INTO orders (
         order_number, amount, price, total_price, asset, fiat,
         buyer_nickname, seller_nickname, trade_type, create_time, order_date
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
