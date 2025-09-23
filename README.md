@@ -112,32 +112,33 @@ npm run binance:fetch 30 SELL  # Last 30 days of SELL orders
 npm run orders
 ```
 
-**Workflow details:**
+**Database-First Workflow:**
 1. **Fetches orders** from Binance P2P API
-2. **Stores directly** in SQLite database with automatic conversion
-3. **Prevents duplicates** using database-driven order tracking
+2. **Stores directly** in SQLite database (no JSON/CSV files)
+3. **Prevents duplicates** using intelligent order tracking
 4. **Processes directly** from database to AFIP WSFEv1 service
-5. **Tracks results** in database with comprehensive status tracking
+5. **Tracks results** with real-time status updates
+6. **Automatic retry** for failed orders (401/400 errors)
 
-**No intermediate files needed** - everything runs database-to-AFIP direct!
+**✨ Zero file dependencies** - Pure database-to-AFIP processing!
 
-### Option 2: Legacy File Processing (Optional)
+### Alternative: Manual Invoice Processing
 
-For users with existing JSON order files:
-1. **Add order files** to `./orders/` directory (JSON format from crypto exchange)
-2. **Process orders** (automatically uses database-first approach):
+If you prefer to create invoices manually via AFIP portal:
+1. **Log into AFIP portal** and create invoices manually
+2. **Mark orders as processed** in the system:
    ```bash
-   npm run orders
+   npm run manual <order_number> <cae> <voucher_number> "Manual via AFIP portal"
    ```
 
-**Note**: The system now prioritizes database processing over file processing for better performance.
+**Note**: The system uses a pure database-first approach with no file dependencies.
 
-### Manual Invoice Tracking
+### Manual Invoice Commands
 
 Mark an order as manually processed:
 ```bash
-node src/index.js manual 22798407061264470016 12345678901234 123 "Manual via AFIP portal"
-# Format: orderNumber CAE voucherNumber notes
+npm run manual <order_number> <cae> <voucher_number> "Manual via AFIP portal"
+# Example: npm run manual 22798407061264470016 12345678901234 123 "Manual processing"
 ```
 
 ### Status and Reporting
@@ -155,25 +156,24 @@ npm run month-report
 ```
 
 The month report shows:
-- 📊 Summary statistics (total, processed, pending, successful, failed orders)
-- 💰 Financial summary (total amount, invoiced amount)
-- 📋 Detailed order list with individual status and CAE numbers
-- 📈 Processing and success rates
-- 💡 Next action recommendations
+- 📊 **Clear status indicators**: ✅ Success, ❌ Failed, ⏳ Pending
+- 💰 **Financial summary**: Total trading volume and successfully invoiced amounts
+- 📋 **Detailed order breakdown** with individual status and CAE numbers
+- 📈 **Accurate metrics**: Invoice success rate and overall completion
+- 💡 **Next action recommendations** for pending orders
 
-### Processing from Database
+### Database-First Processing
 
-Process unprocessed orders directly from database:
+Process all pending orders from database:
 ```bash
 npm run orders
 ```
 
-### Legacy CSV Processing (Optional)
-
-For backward compatibility, CSV processing is still supported:
-```bash
-npm run process data/invoices.csv
-```
+**Features:**
+- ✅ **Automatic retry** for failed orders (401/400 authentication errors)
+- ✅ **Real-time status updates** in database
+- ✅ **Zero file dependencies** - pure database workflow
+- ✅ **Intelligent duplicate detection** based on processing success
 
 ## 📊 Database Schema
 
@@ -194,12 +194,13 @@ The application uses SQLite (`data/afip-orders.db`) with two main tables:
 - **voucher_number**: AFIP voucher number
 - **error_message**: Details of any processing failures
 
-### Streamlined Processing Logic
-1. **Direct Storage**: Orders stored directly from Binance API to database
-2. **Smart Processing**: Only unprocessed orders are sent to AFIP (automatic duplicate prevention)
-3. **Retry Capability**: Failed orders (401 auth errors) remain unprocessed for retry
+### Database-First Architecture
+1. **Direct Storage**: Orders flow directly from Binance API → Database (no JSON/CSV files)
+2. **Intelligent Processing**: Only unprocessed/failed orders sent to AFIP
+3. **Automatic Retry**: Failed orders automatically retry on next run
 4. **Manual Override**: Orders can be marked as manually processed via AFIP portal
-5. **No File Dependencies**: Entire workflow operates database-to-AFIP directly
+5. **Real-time Updates**: Instant status tracking with ACID transaction compliance
+6. **Zero File Dependencies**: Pure database-to-AFIP workflow
 
 ## 🔒 Security Features
 
