@@ -4,7 +4,7 @@ const AfipService = require('./services/AfipService');
 const BinanceService = require('./services/BinanceService');
 // Removed unused imports after refactor
 const { showCurrentMonthReport } = require('./commands/report');
-const { processOrders, processOrdersLegacy } = require('./commands/orders');
+const { processOrdersDatabase } = require('./commands/orders-db');
 const { checkOrderStatus } = require('./commands/status');
 const { processInvoices } = require('./commands/process');
 const { markManualInvoice } = require('./commands/manual');
@@ -70,11 +70,7 @@ class AfipInvoiceApp {
   }
 
   async processOrders() {
-    return await processOrders(this.config, this.afipService);
-  }
-
-  async processOrdersLegacy() {
-    return await processOrdersLegacy(this.afipService);
+    return await processOrdersDatabase(this.config, this.afipService);
   }
 
   async showCurrentMonthReport() {

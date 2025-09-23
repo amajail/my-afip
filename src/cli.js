@@ -56,19 +56,7 @@ async function main() {
       }
       case 'binance-month': {
         const monthTradeType = args[1] || 'SELL';
-        console.log('📅 Fetching current month orders from Binance...');
-        const fetcher = new BinanceOrderFetcher();
-        await fetcher.initialize();
-        const result = await fetcher.fetchCurrentMonthOrders(monthTradeType);
-        if (result.success && result.ordersCount > 0) {
-          console.log(`✅ Fetched ${result.ordersCount} orders for ${result.month}`);
-          console.log('🔄 Processing to invoices...');
-          await app.processOrders();
-        } else if (result.success) {
-          console.log(`ℹ️  No orders found for ${result.month}`);
-        } else {
-          console.log(`❌ Failed: ${result.error}`);
-        }
+        await app.fetchBinanceMonth(monthTradeType);
         break;
       }
       case 'sample':

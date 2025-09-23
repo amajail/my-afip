@@ -1,4 +1,5 @@
 const BinanceService = require('../src/services/BinanceService');
+const DatabaseOrderTracker = require('../src/utils/DatabaseOrderTracker');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -264,6 +265,60 @@ class BinanceOrderFetcher {
       return fetchResult;
     } catch (error) {
       console.error('❌ Fetch and process failed:', error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Database-first approach: Fetch and store directly to database
+  async fetchToDatabase(options = {}) {
+    const {
+      days = 7,
+      tradeType = 'SELL'
+    } = options;
+
+    console.log(`📥 Fetching ${tradeType} orders from last ${days} days directly to database...`);
+
+    try {
+      const response = await this.binanceService.getRecentP2POrders(tradeType, days);
+
+      if (response.data && response.data.length > 0) {
+        // Convert to our expected format
+        const orders = response.data.map(order =>
+          this.binanceService.convertP2POrderToInternalFormat(order)
+        );
+
+        // Store directly to database
+        const dbTracker = new DatabaseOrderTracker();
+        try {
+          await dbTracker.initialize();
+          const insertedCount = await dbTracker.insertOrders(orders);
+
+          console.log(`✅ Fetched ${orders.length} orders`);
+          console.log(`💾 Stored ${insertedCount} new orders to database`);
+
+          return {
+            success: true,
+            ordersCount: orders.length,
+            newOrdersCount: insertedCount,
+            orders: orders
+          };
+        } finally {
+          await dbTracker.close();
+        }
+      } else {
+        console.log('ℹ️  No orders found for the specified period');
+        return {
+          success: true,
+          ordersCount: 0,
+          newOrdersCount: 0,
+          orders: []
+        };
+      }
+    } catch (error) {
+      console.error('❌ Error fetching orders to database:', error.message);
       return {
         success: false,
         error: error.message
