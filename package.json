@@ -17,6 +17,8 @@
     "fetch-orders": "node scripts/fetchBinanceOrders.js",
     "report": "node src/index.js report",
     "month-report": "node src/index.js month-report",
+    "query": "node src/commands/query-invoice.js",
+    "query-cae": "node src/commands/query-cae.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

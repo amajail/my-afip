@@ -164,6 +164,29 @@ The month report shows:
 - 📈 **Accurate metrics**: Invoice success rate and overall completion
 - 💡 **Next action recommendations** for pending orders
 
+### CAE Invoice Query
+
+Search for invoices by CAE (Código de Autorización Electrónico) number:
+```bash
+npm run query-cae <CAE_NUMBER>
+# Example: npm run query-cae 75398279001644
+```
+
+**Features:**
+- ✅ **Local database search** with complete order details
+- ✅ **AFIP verification** to confirm voucher validity
+- ✅ **Comprehensive report** showing all transaction details
+- ✅ **Trading party information** and cryptocurrency details
+- ✅ **Date tracking** from order creation to AFIP processing
+
+**Report includes:**
+- 📋 CAE and voucher numbers
+- 📅 Processing timeline and dates
+- 💰 Transaction amounts and currency pairs
+- 🏢 Trading parties (buyer/seller)
+- 📊 AFIP processing status and verification
+- 💡 Invoice type and technical details
+
 ### Database-First Processing
 
 Process all pending orders from database:
