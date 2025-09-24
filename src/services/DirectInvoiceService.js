@@ -93,11 +93,14 @@ class DirectInvoiceService {
   }
 
   convertOrderToInvoice(order) {
+    // Calculate the appropriate invoice date based on AFIP 10-day rule
+    const invoiceDate = this.calculateInvoiceDate(order.create_time);
+
     // Convert database order to Invoice model format
     return new Invoice({
       docType: 11, // Type C for monotributistas
       docNumber: '', // Will be auto-assigned by AFIP
-      docDate: new Date().toISOString().split('T')[0], // Use current date instead of old order date
+      docDate: invoiceDate,
       concept: 1, // Products (cryptocurrency trading commissions)
       currency: 'PES',
       exchange: 1,
@@ -108,6 +111,25 @@ class DirectInvoiceService {
       associatedDocs: [],
       orderNumber: order.order_number
     });
+  }
+
+  calculateInvoiceDate(binanceTimestamp) {
+    // Convert Binance timestamp to Date object
+    const binanceDate = new Date(parseInt(binanceTimestamp));
+    const today = new Date();
+
+    // Calculate 10 days ago from today (AFIP regulation limit)
+    const tenDaysAgo = new Date(today);
+    tenDaysAgo.setDate(today.getDate() - 10);
+
+    // AFIP Invoice Date Rules:
+    // - Use actual Binance order date if within last 10 days
+    // - Use exactly 10 days ago if Binance order is older (AFIP maximum backdating limit)
+    if (binanceDate >= tenDaysAgo) {
+      return binanceDate.toISOString().split('T')[0];
+    }
+
+    return tenDaysAgo.toISOString().split('T')[0];
   }
 
   async close() {
