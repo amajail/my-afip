@@ -124,6 +124,44 @@ npm run orders
 
 **✨ Zero file dependencies** - Pure database-to-AFIP processing!
 
+## 🚀 Quick Commands
+
+### Essential Operations
+```bash
+# Process all pending orders to AFIP invoices
+npm run orders
+
+# Get current month report with success rates
+npm run report
+
+# Check overall system status
+npm run status
+```
+
+### Invoice Verification & Query
+```bash
+# Complete AFIP verification (recommended)
+npm run query-full 6              # Verify voucher 6 with full details
+
+# Search by CAE number
+npm run query-cae 75398279001644  # Search by CAE authorization code
+
+# Live AFIP existence check
+npm run query-afip 6              # Confirm voucher exists in AFIP
+```
+
+### Binance Integration
+```bash
+# Auto-fetch and process (full workflow)
+npm run binance:auto
+
+# Fetch current month orders only
+npm run binance:month
+
+# Test Binance API connection
+npm run binance:test
+```
+
 ### Alternative: Manual Invoice Processing
 
 If you prefer to create invoices manually via AFIP portal:
@@ -164,28 +202,56 @@ The month report shows:
 - 📈 **Accurate metrics**: Invoice success rate and overall completion
 - 💡 **Next action recommendations** for pending orders
 
-### CAE Invoice Query
+### Invoice Query & Verification
 
-Search for invoices by CAE (Código de Autorización Electrónico) number:
+**🎯 Full AFIP Verification (Recommended)**
+```bash
+npm run query-full <VOUCHER_NUMBER>
+# Example: npm run query-full 6
+```
+
+Complete invoice verification with:
+- ✅ **Live AFIP confirmation** that voucher exists in AFIP system
+- ✅ **Complete invoice reconstruction** with all financial details
+- ✅ **Cross-validation** between local database and AFIP data
+- ✅ **Full breakdown**: CAE, amounts, dates, document info, currency
+- ✅ **Triple verification**: Local + AFIP + Reconstruction
+
+**🔍 CAE Number Search**
 ```bash
 npm run query-cae <CAE_NUMBER>
 # Example: npm run query-cae 75398279001644
 ```
 
-**Features:**
-- ✅ **Local database search** with complete order details
-- ✅ **AFIP verification** to confirm voucher validity
-- ✅ **Comprehensive report** showing all transaction details
-- ✅ **Trading party information** and cryptocurrency details
-- ✅ **Date tracking** from order creation to AFIP processing
+**🌐 Live AFIP Query**
+```bash
+npm run query-afip <VOUCHER_NUMBER>
+# Example: npm run query-afip 6
+```
 
-**Report includes:**
-- 📋 CAE and voucher numbers
-- 📅 Processing timeline and dates
-- 💰 Transaction amounts and currency pairs
-- 🏢 Trading parties (buyer/seller)
-- 📊 AFIP processing status and verification
-- 💡 Invoice type and technical details
+**Query Methods Comparison:**
+- `query-full`: **Complete verification** (local + AFIP + reconstruction)
+- `query-cae`: **CAE-based search** (local database + AFIP verification)
+- `query-afip`: **AFIP existence check** (live server + local comparison)
+
+**Example Output:**
+```
+🌐 COMPLETE AFIP INVOICE DATA
+=============================
+📋 Basic Information:
+   • CAE: 75398279001644
+   • Voucher Number: 6
+   • Invoice Type: 11 (Factura C)
+   • Status: A (Approved)
+
+💰 Complete Financial Details:
+   • Total Amount: $ 199.200,00
+   • Net Amount: $ 199.200,00
+   • VAT Amount: N/A (Monotributista)
+
+🔍 Data Source: reconstructed_from_local_and_afip_verification
+✅ AFIP Existence Verified
+```
 
 ### Database-First Processing
 

@@ -19,6 +19,8 @@
     "month-report": "node src/index.js month-report",
     "query": "node src/commands/query-invoice.js",
     "query-cae": "node src/commands/query-cae.js",
+    "query-afip": "node src/commands/query-afip-live.js",
+    "query-full": "node src/commands/afip-full-query.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
