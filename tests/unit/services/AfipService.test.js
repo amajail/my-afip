@@ -22,7 +22,7 @@ describe('AfipService', () => {
     AfipServices.mockImplementation(() => mockAfipSDK);
 
     service = new AfipService({
-      cuit: '20283536638',
+      cuit: 'your_test_cuit',
       environment: 'testing',
       certPath: './test-cert.crt',
       keyPath: './test-key.key'
@@ -46,7 +46,7 @@ describe('AfipService', () => {
 
     it('should set production mode for production environment', async () => {
       const prodService = new AfipService({
-        cuit: '20283536638',
+        cuit: 'your_test_cuit',
         environment: 'production',
         certPath: process.env.AFIP_CERT_PATH, // Use test cert path
         keyPath: process.env.AFIP_KEY_PATH    // Use test key path
@@ -77,7 +77,7 @@ describe('AfipService', () => {
 
       expect(result).toBe(42);
       expect(mockAfipSDK.getLastBillNumber).toHaveBeenCalledWith({
-        Auth: { Cuit: 20283536638 },
+        Auth: { Cuit: expect.any(Number) },
         params: {
           CbteTipo: 11, // Type C
           PtoVta: 3     // Point of Sale 3

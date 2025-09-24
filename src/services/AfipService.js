@@ -135,7 +135,8 @@ class AfipService {
     return results;
   }
 
-  async getLastVoucherNumber(salePoint = 3, voucherType = 11) {
+  async getLastVoucherNumber(salePoint = null, voucherType = 11) {
+    salePoint = salePoint || parseInt(process.env.AFIP_PTOVTA);
     if (!this.initialized) {
       throw new Error('AFIP service not initialized');
     }

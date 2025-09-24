@@ -32,7 +32,7 @@ describe('DirectInvoiceService', () => {
     AfipService.mockImplementation(() => mockAfipService);
 
     service = new DirectInvoiceService({
-      cuit: '20283536638',
+      cuit: 'your_test_cuit',
       environment: 'testing'
     });
   });

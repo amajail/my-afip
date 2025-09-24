@@ -45,6 +45,7 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
    AFIP_CERT_PATH=./certificates/cert.crt
    AFIP_KEY_PATH=./certificates/private.key
    AFIP_ENVIRONMENT=production
+   AFIP_PTOVTA=3
 
    # Binance API Configuration
    BINANCE_API_KEY=your_binance_api_key
@@ -66,6 +67,7 @@ AFIP_CUIT=your_cuit_here                 # Your AFIP CUIT (without hyphens)
 AFIP_CERT_PATH=./certificates/cert.crt   # Path to AFIP certificate
 AFIP_KEY_PATH=./certificates/private.key  # Path to private key
 AFIP_ENVIRONMENT=production              # 'testing' or 'production'
+AFIP_PTOVTA=3                           # Point of Sale number (default: 3)
 
 # Application Settings
 LOG_LEVEL=info
@@ -285,7 +287,7 @@ This application uses the **facturajs** open-source SDK for direct AFIP WSFEv1 i
 For production use, you need:
 1. **Valid AFIP digital certificate** registered to your CUIT
 2. **Certificate authorized** for WSFEv1 service in AFIP portal
-3. **Point of Sale configured** for electronic billing (default: POS 3)
+3. **Point of Sale configured** for electronic billing (configured via AFIP_PTOVTA env var)
 
 ### 🚀 Recent Improvements (September 2025)
 - **Fixed invoice date handling** (uses current date instead of old order dates)
@@ -438,7 +440,7 @@ node scripts/fetchBinanceOrders.js range 2025-09-15 2025-09-20 SELL
 ### Required Fields
 - Service concept (2) with service dates
 - Argentine peso (PES) currency
-- Point of sale 2 (Factura en Línea)
+- Point of Sale configurable via environment variable
 
 ## ⚠️ Important Notes
 

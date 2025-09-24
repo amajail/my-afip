@@ -14,10 +14,11 @@ if (!process.env.DEBUG_TESTS) {
 }
 
 // Mock environment variables for testing
-process.env.AFIP_CUIT = process.env.AFIP_CUIT || '20283536638';
+process.env.AFIP_CUIT = process.env.AFIP_CUIT || 'your_cuit_here';
 process.env.AFIP_ENVIRONMENT = process.env.AFIP_ENVIRONMENT || 'testing';
 process.env.AFIP_CERT_PATH = process.env.AFIP_CERT_PATH || './certificates/cert.crt';
 process.env.AFIP_KEY_PATH = process.env.AFIP_KEY_PATH || './certificates/private.key';
+process.env.AFIP_PTOVTA = process.env.AFIP_PTOVTA || '3'; // Keep default for tests
 
 // Global test timeout
 jest.setTimeout(30000);

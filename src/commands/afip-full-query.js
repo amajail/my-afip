@@ -22,7 +22,8 @@ class FullAfipQuery {
     console.log(`🔗 Full AFIP Query Service initialized (${this.config.homo ? 'Homologation' : 'Production'})`);
   }
 
-  async getFullInvoiceData(voucherNumber, pointOfSale = 3, voucherType = 11) {
+  async getFullInvoiceData(voucherNumber, pointOfSale = null, voucherType = 11) {
+    pointOfSale = pointOfSale || parseInt(process.env.AFIP_PTOVTA);
     console.log(`🔍 Getting full invoice data for voucher ${voucherNumber}`);
 
     try {
@@ -432,7 +433,7 @@ Known voucher numbers: 6-20
   }
 
   const voucherNumber = parseInt(args[0]);
-  const pointOfSale = args[1] ? parseInt(args[1]) : 3;
+  const pointOfSale = args[1] ? parseInt(args[1]) : parseInt(process.env.AFIP_PTOVTA);
 
   if (!voucherNumber || voucherNumber <= 0) {
     console.log('❌ Invalid voucher number.');

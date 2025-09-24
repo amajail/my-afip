@@ -35,7 +35,7 @@ class Invoice {
     
     const baseInvoice = {
       CantReg: 1,
-      PtoVta: 3, // Use Point of Sale 3
+      PtoVta: parseInt(process.env.AFIP_PTOVTA), // Point of Sale from environment
       CbteTipo: invoiceType, // Factura C (11) for Monotributista, B (6) for others
       Concepto: this.concept,
       DocTipo: this.docNumber ? this.docType : 99, // 99 for "Sin Identificar" (unidentified)

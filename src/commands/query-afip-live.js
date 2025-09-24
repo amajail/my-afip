@@ -22,7 +22,8 @@ class LiveAfipQuery {
     console.log(`🔗 Live AFIP Query Service initialized (${this.config.homo ? 'Homologation' : 'Production'})`);
   }
 
-  async queryInvoiceByVoucher(voucherNumber, pointOfSale = 3, voucherType = 11) {
+  async queryInvoiceByVoucher(voucherNumber, pointOfSale = null, voucherType = 11) {
+    pointOfSale = pointOfSale || parseInt(process.env.AFIP_PTOVTA);
     console.log(`🔍 Querying AFIP live data for voucher ${voucherNumber}`);
 
     try {
@@ -48,7 +49,8 @@ class LiveAfipQuery {
     }
   }
 
-  async queryAfipDirect(voucherNumber, pointOfSale = 3, voucherType = 11) {
+  async queryAfipDirect(voucherNumber, pointOfSale = null, voucherType = 11) {
+    pointOfSale = pointOfSale || parseInt(process.env.AFIP_PTOVTA);
     try {
       // Use the raw execRemote method with correct SOAP structure
       console.log(`📡 Calling AFIP FECompConsultar for voucher ${voucherNumber}...`);
@@ -403,7 +405,7 @@ Known voucher numbers from recent processing: 6-20
   }
 
   const voucherNumber = parseInt(args[0]);
-  const pointOfSale = args[1] ? parseInt(args[1]) : 3;
+  const pointOfSale = args[1] ? parseInt(args[1]) : parseInt(process.env.AFIP_PTOVTA);
 
   if (!voucherNumber || voucherNumber <= 0) {
     console.log('❌ Invalid voucher number. Please provide a positive integer.');

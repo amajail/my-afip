@@ -37,7 +37,7 @@ Production-ready AFIP electronic invoicing system with database-first architectu
 ### 4. AFIP Configuration
 - ✅ Production certificate generated and downloaded
 - ✅ Certificate files: `certificates/cert.crt` and `certificates/private.key`
-- ✅ CUIT: 20283536638 configured
+- ✅ CUIT: [configured via environment variable]
 - ✅ Point of Sale 2 ("Factura en Linea - Monotributo") configured
 - ✅ WSFE service enabled and certificate associated
 - ✅ Manual invoice creation working through AFIP portal
@@ -85,10 +85,11 @@ Production-ready AFIP electronic invoicing system with database-first architectu
 ### Current Configuration (.env)
 ```
 # AFIP Configuration
-AFIP_CUIT=20283536638
+AFIP_CUIT=your_cuit_here
 AFIP_CERT_PATH=./certificates/cert.crt
 AFIP_KEY_PATH=./certificates/private.key
 AFIP_ENVIRONMENT=production
+AFIP_PTOVTA=3
 
 # Application Settings
 LOG_LEVEL=info
@@ -101,7 +102,7 @@ BINANCE_SECRET_KEY=JGyjC39yGuKvos0TGf9ZUjXvkezFrJvra5d6GKgAkI16SyOmjC1IJX64Jci5V
 ```
 
 ### AFIP Portal Configuration
-- ✅ Certificate alias: 20283536638
+- ✅ Certificate alias: [matches your CUIT]
 - ✅ Service association: wsfe
 - ✅ Point of Sale 2: "Factura en Linea - Monotributo"
 - ✅ Manual invoice creation: WORKING
