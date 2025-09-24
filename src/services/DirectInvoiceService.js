@@ -28,20 +28,26 @@ class DirectInvoiceService {
 
     console.log(`📋 Found ${unprocessedOrders.length} unprocessed orders`);
 
+    // Convert all orders to invoices first
+    const invoices = unprocessedOrders.map(order => {
+      const invoice = this.convertOrderToInvoice(order);
+      invoice.orderNumber = order.order_number; // Add reference for later tracking
+      return invoice;
+    });
+
+    // Process all invoices in sequence with proper voucher numbering
+    const results = await this.afipService.createMultipleInvoices(invoices);
+
     let successful = 0;
     let failed = 0;
-    const results = [];
+    const finalResults = [];
 
-    for (const order of unprocessedOrders) {
+    // Update database with results
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const order = unprocessedOrders[i];
+
       try {
-        console.log(`🔄 Processing order ${order.order_number} ($${order.total_price})...`);
-
-        // Convert database order to Invoice format
-        const invoice = this.convertOrderToInvoice(order);
-
-        // Submit to AFIP
-        const result = await this.afipService.createInvoice(invoice);
-
         // Update database with result
         await this.dbTracker.db.markOrderProcessed(
           order.order_number,
@@ -50,14 +56,12 @@ class DirectInvoiceService {
         );
 
         if (result.success) {
-          console.log(`✅ Order ${order.order_number}: CAE ${result.cae}`);
           successful++;
         } else {
-          console.log(`❌ Order ${order.order_number}: ${result.error}`);
           failed++;
         }
 
-        results.push({
+        finalResults.push({
           orderNumber: order.order_number,
           success: result.success,
           cae: result.cae,
@@ -65,16 +69,9 @@ class DirectInvoiceService {
         });
 
       } catch (error) {
-        console.error(`❌ Error processing order ${order.order_number}:`, error.message);
-
-        await this.dbTracker.db.markOrderProcessed(
-          order.order_number,
-          { success: false, error: error.message },
-          'automatic'
-        );
-
+        console.error(`❌ Error updating database for order ${order.order_number}:`, error.message);
         failed++;
-        results.push({
+        finalResults.push({
           orderNumber: order.order_number,
           success: false,
           error: error.message
@@ -91,7 +88,7 @@ class DirectInvoiceService {
       processed: successful + failed,
       successful,
       failed,
-      results
+      results: finalResults
     };
   }
 
@@ -100,8 +97,8 @@ class DirectInvoiceService {
     return new Invoice({
       docType: 11, // Type C for monotributistas
       docNumber: '', // Will be auto-assigned by AFIP
-      docDate: order.order_date,
-      concept: 2, // Services
+      docDate: new Date().toISOString().split('T')[0], // Use current date instead of old order date
+      concept: 1, // Products (cryptocurrency trading commissions)
       currency: 'PES',
       exchange: 1,
       netAmount: Math.round(parseFloat(order.total_price)),

@@ -35,7 +35,7 @@ class Invoice {
     
     const baseInvoice = {
       CantReg: 1,
-      PtoVta: 2, // Use Point of Sale 2 (Factura en Linea)
+      PtoVta: 3, // Use Point of Sale 3
       CbteTipo: invoiceType, // Factura C (11) for Monotributista, B (6) for others
       Concepto: this.concept,
       DocTipo: this.docNumber ? this.docType : 99, // 99 for "Sin Identificar" (unidentified)
@@ -51,12 +51,16 @@ class Invoice {
       ImpTrib: 0,
       MonId: this.currency,
       MonCotiz: this.exchange,
-      FchServDesde: this.serviceFrom ? this.formatDate(this.serviceFrom) : this.formatDate(this.docDate),
-      FchServHasta: this.serviceTo ? this.formatDate(this.serviceTo) : this.formatDate(this.docDate),
-      FchVtoPago: this.dueDate ? this.formatDate(this.dueDate) : this.formatDate(this.docDate),
       // Required for Resolution 5616 - VAT condition of receiver
       CondicionIVAReceptorId: 5 // Consumidor Final (most common)
     };
+
+    // Add service dates only for services (Concept 2 or 3)
+    if (this.concept === 2 || this.concept === 3) {
+      baseInvoice.FchServDesde = this.serviceFrom ? this.formatDate(this.serviceFrom) : this.formatDate(this.docDate);
+      baseInvoice.FchServHasta = this.serviceTo ? this.formatDate(this.serviceTo) : this.formatDate(this.docDate);
+      baseInvoice.FchVtoPago = this.dueDate ? this.formatDate(this.dueDate) : this.formatDate(this.docDate);
+    }
 
     // For Type C invoices (Monotributista - no VAT), don't include IVA array
     if (invoiceType === 11) {

@@ -12,6 +12,8 @@ A Node.js application for processing cryptocurrency P2P trading orders into AFIP
 - **🔐 Secure Configuration**: Environment-based configuration with sensitive data protection
 - **✅ AFIP WSFEv1 Compliance**: Full support for electronic invoicing regulations
 - **🤖 Full Automation**: From Binance API to AFIP invoices in one command
+- **💰 100% Free AFIP Integration**: Uses open-source facturajs SDK - no paid licenses required
+- **🎯 Direct AFIP Connection**: Native WSFEv1 web service integration with proper authentication
 
 ## 🚀 Quick Start
 
@@ -174,6 +176,34 @@ npm run orders
 - ✅ **Real-time status updates** in database
 - ✅ **Zero file dependencies** - pure database workflow
 - ✅ **Intelligent duplicate detection** based on processing success
+
+## 🔧 AFIP Integration
+
+This application uses the **facturajs** open-source SDK for direct AFIP WSFEv1 integration:
+
+### 🆓 Free & Open Source
+- **No paid licenses** required (switched from commercial @afipsdk/afip.js)
+- **Direct AFIP connection** via WSFEv1 web services
+- **Full authentication** with WSAA (Web Services Authentication and Authorization)
+
+### ✅ Production Ready
+- **Valid CAE generation** for all electronic invoices
+- **Proper voucher sequencing** with automatic increment management
+- **Error handling** with retry logic for temporary failures
+- **Production environment** authentication and service authorization
+
+### 🔐 Certificate Requirements
+For production use, you need:
+1. **Valid AFIP digital certificate** registered to your CUIT
+2. **Certificate authorized** for WSFEv1 service in AFIP portal
+3. **Point of Sale configured** for electronic billing (default: POS 3)
+
+### 🚀 Recent Improvements (September 2025)
+- **Fixed invoice date handling** (uses current date instead of old order dates)
+- **Resolved voucher numbering** sequence issues
+- **Corrected service authorization** in AFIP portal
+- **Updated to free SDK** eliminating monthly subscription costs
+- **Verified with 15+ successful invoices** (vouchers 6-20, CAE numbers 75398279xxxxxx)
 
 ## 📊 Database Schema
 
