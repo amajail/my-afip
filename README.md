@@ -219,6 +219,8 @@ Complete invoice verification with:
 - ✅ **Full breakdown**: CAE, amounts, dates, document info, currency
 - ✅ **Triple verification**: Local + AFIP + Reconstruction
 
+**⏰ Important Note**: Invoices may take up to 24 hours to appear on the AFIP web portal after successful creation. Use the query commands above for immediate verification.
+
 **🔍 CAE Number Search**
 ```bash
 npm run query-cae <CAE_NUMBER>

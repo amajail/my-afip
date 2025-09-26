@@ -51,11 +51,17 @@ class Database {
         success BOOLEAN,
         cae TEXT,
         voucher_number INTEGER,
+        invoice_date TEXT,
         error_message TEXT,
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
+    `;
+
+    // Add invoice_date column if it doesn't exist (for existing databases)
+    const addInvoiceDateColumn = `
+      ALTER TABLE orders ADD COLUMN invoice_date TEXT;
     `;
 
     const createInvoicesTable = `
@@ -84,6 +90,11 @@ class Database {
       this.db.serialize(() => {
         this.db.run(createOrdersTable, (err) => {
           if (err) reject(err);
+        });
+
+        // Try to add invoice_date column for existing databases (will fail silently if already exists)
+        this.db.run(addInvoiceDateColumn, (err) => {
+          // Ignore errors - column might already exist
         });
 
         this.db.run(createInvoicesTable, (err) => {
@@ -131,7 +142,7 @@ class Database {
     });
   }
 
-  async markOrderProcessed(orderNumber, result, method = 'automatic') {
+  async markOrderProcessed(orderNumber, result, method = 'automatic', invoiceDate = null) {
     const sql = `
       UPDATE orders SET
         processed_at = CURRENT_TIMESTAMP,
@@ -139,6 +150,7 @@ class Database {
         success = ?,
         cae = ?,
         voucher_number = ?,
+        invoice_date = ?,
         error_message = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE order_number = ?
@@ -150,6 +162,7 @@ class Database {
         result.success,
         result.cae || null,
         result.voucherNumber || null,
+        invoiceDate,
         result.error || null,
         orderNumber
       ], function(err) {
@@ -288,6 +301,7 @@ class Database {
         success,
         cae,
         voucher_number,
+        invoice_date,
         error_message,
         processed_at
       FROM orders

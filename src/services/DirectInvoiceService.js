@@ -46,13 +46,15 @@ class DirectInvoiceService {
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const order = unprocessedOrders[i];
+      const invoice = invoices[i];
 
       try {
-        // Update database with result
+        // Update database with result, including the invoice date (CbteFch)
         await this.dbTracker.db.markOrderProcessed(
           order.order_number,
           result,
-          'automatic'
+          'automatic',
+          invoice.docDate  // This is the CbteFch date calculated for AFIP
         );
 
         if (result.success) {
