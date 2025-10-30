@@ -62,7 +62,7 @@ class AfipInvoiceApp {
   }
 
   async fetchBinanceOrders(days = 7, tradeType = 'SELL', autoProcess = false) {
-    return await fetchBinanceOrders(this.binanceService, days, tradeType, autoProcess);
+    return await fetchBinanceOrders(this.binanceService, days, tradeType, autoProcess, this.config, this.afipService);
   }
 
   async fetchBinanceMonth(tradeType) {

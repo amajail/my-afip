@@ -22,7 +22,7 @@ async function testBinanceConnection(binanceService, config) {
   }
 }
 
-async function fetchBinanceOrders(binanceService, days = 7, tradeType = 'SELL', autoProcess = false) {
+async function fetchBinanceOrders(binanceService, days = 7, tradeType = 'SELL', autoProcess = false, config = null, afipService = null) {
   console.log('📡 Fetching orders from Binance API...');
   const fetcher = new BinanceOrderFetcher();
   try {
@@ -38,7 +38,7 @@ async function fetchBinanceOrders(binanceService, days = 7, tradeType = 'SELL', 
       if (autoProcess && result.newOrdersCount > 0) {
         console.log('\n🔄 Auto-processing new orders to AFIP invoices...');
         const { processOrders } = require('./orders');
-        const processResult = await processOrders({}, null); // Will use database-first processing
+        const processResult = await processOrders(config || {}, afipService); // Pass config and afipService
         console.log('📊 Processing summary:');
         console.log(`  - Orders processed: ${processResult?.processed || 0}`);
         console.log(`  - Successful: ${processResult?.successful || 0}`);

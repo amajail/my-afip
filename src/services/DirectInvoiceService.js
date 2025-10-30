@@ -3,15 +3,19 @@ const AfipService = require('./AfipService');
 const Invoice = require('../models/Invoice');
 
 class DirectInvoiceService {
-  constructor(config) {
+  constructor(config, afipService = null) {
     this.config = config;
     this.dbTracker = new DatabaseOrderTracker();
-    this.afipService = new AfipService(config);
+    // Reuse existing afipService if provided, otherwise create new one
+    this.afipService = afipService || new AfipService(config);
   }
 
   async initialize() {
     await this.dbTracker.initialize();
-    this.afipService.initialize();
+    // Only initialize if we created a new afipService
+    if (!this.afipService.initialized) {
+      await this.afipService.initialize();
+    }
     console.log('🔗 Direct Invoice Service initialized (Database → AFIP)');
   }
 
@@ -95,7 +99,7 @@ class DirectInvoiceService {
   }
 
   convertOrderToInvoice(order) {
-    // Calculate the appropriate invoice date based on AFIP 10-day rule
+    // Calculate the appropriate invoice date based on AFIP rules
     const invoiceDate = this.calculateInvoiceDate(order.create_time);
 
     // Convert database order to Invoice model format
@@ -103,7 +107,7 @@ class DirectInvoiceService {
       docType: 11, // Type C for monotributistas
       docNumber: '', // Will be auto-assigned by AFIP
       docDate: invoiceDate,
-      concept: 1, // Products (cryptocurrency trading commissions)
+      concept: 2, // Services (allows wider date range than Products)
       currency: 'PES',
       exchange: 1,
       netAmount: Math.round(parseFloat(order.total_price)),
@@ -120,18 +124,18 @@ class DirectInvoiceService {
     const binanceDate = new Date(parseInt(binanceTimestamp));
     const today = new Date();
 
-    // Calculate 10 days ago from today (AFIP regulation limit)
-    const tenDaysAgo = new Date(today);
-    tenDaysAgo.setDate(today.getDate() - 10);
+    // Calculate 5 days ago from today (AFIP regulation limit for Services concept)
+    const fiveDaysAgo = new Date(today);
+    fiveDaysAgo.setDate(today.getDate() - 5);
 
-    // AFIP Invoice Date Rules:
-    // - Use actual Binance order date if within last 10 days
-    // - Use exactly 10 days ago if Binance order is older (AFIP maximum backdating limit)
-    if (binanceDate >= tenDaysAgo) {
+    // AFIP Invoice Date Rules for Services (Concept 2):
+    // - Use actual Binance order date if within last 5 days
+    // - Use exactly 5 days ago if Binance order is older (to stay within AFIP date range)
+    if (binanceDate >= fiveDaysAgo) {
       return binanceDate.toISOString().split('T')[0];
     }
 
-    return tenDaysAgo.toISOString().split('T')[0];
+    return fiveDaysAgo.toISOString().split('T')[0];
   }
 
   async close() {

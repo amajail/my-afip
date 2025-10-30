@@ -3,7 +3,7 @@ const DirectInvoiceService = require('../services/DirectInvoiceService');
 async function processOrdersDatabase(config, afipService) {
   console.log('🚀 Processing orders to AFIP invoices (Database-first)...');
   try {
-    const directService = new DirectInvoiceService(config);
+    const directService = new DirectInvoiceService(config, afipService);
     await directService.initialize();
     const result = await directService.processUnprocessedOrders();
 
