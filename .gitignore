@@ -4,6 +4,13 @@
 .env.production
 .env.test
 
+# Project status (may contain sensitive configuration examples)
+PROJECT_STATUS.md
+
+# AFIP token cache (sensitive)
+.afip-tokens
+.afip-tokens-*
+
 # AFIP Certificates (sensitive)
 *.crt
 *.key

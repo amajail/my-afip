@@ -1,4 +1,3 @@
-require('dotenv').config();
 const AfipInvoiceApp = require('./AfipInvoiceApp');
 
 async function main() {

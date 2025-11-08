@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const config = require('./config');
 const AfipService = require('./services/AfipService');
 const BinanceService = require('./services/BinanceService');
 // Removed unused imports after refactor
@@ -23,15 +24,16 @@ class AfipInvoiceApp {
     await generateSampleData();
   }
   constructor() {
+    // Use centralized configuration
     this.config = {
-      cuit: process.env.AFIP_CUIT,
-      certPath: process.env.AFIP_CERT_PATH,
-      keyPath: process.env.AFIP_KEY_PATH,
-      environment: process.env.AFIP_ENVIRONMENT || 'testing',
-      inputPath: process.env.INVOICE_INPUT_PATH || './data/invoices.csv',
-      outputPath: process.env.INVOICE_OUTPUT_PATH || './data/processed',
-      binanceApiKey: process.env.BINANCE_API_KEY,
-      binanceSecretKey: process.env.BINANCE_SECRET_KEY
+      cuit: config.afip.cuit,
+      certPath: config.afip.certPath,
+      keyPath: config.afip.keyPath,
+      environment: config.afip.environment,
+      inputPath: config.app.invoiceInputPath,
+      outputPath: config.app.invoiceOutputPath,
+      binanceApiKey: config.binance.apiKey,
+      binanceSecretKey: config.binance.secretKey
     };
 
     this.afipService = new AfipService(this.config);

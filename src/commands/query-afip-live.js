@@ -1,6 +1,6 @@
 const { AfipServices } = require('facturajs');
 const Database = require('../database/Database');
-require('dotenv').config();
+const config = require('../config');
 
 class LiveAfipQuery {
   constructor(config) {
@@ -23,7 +23,7 @@ class LiveAfipQuery {
   }
 
   async queryInvoiceByVoucher(voucherNumber, pointOfSale = null, voucherType = 11) {
-    pointOfSale = pointOfSale || parseInt(process.env.AFIP_PTOVTA);
+    pointOfSale = pointOfSale || config.afip.ptoVta;
     console.log(`🔍 Querying AFIP live data for voucher ${voucherNumber}`);
 
     try {
@@ -50,7 +50,7 @@ class LiveAfipQuery {
   }
 
   async queryAfipDirect(voucherNumber, pointOfSale = null, voucherType = 11) {
-    pointOfSale = pointOfSale || parseInt(process.env.AFIP_PTOVTA);
+    pointOfSale = pointOfSale || config.afip.ptoVta;
     try {
       // Use the raw execRemote method with correct SOAP structure
       console.log(`📡 Calling AFIP FECompConsultar for voucher ${voucherNumber}...`);
@@ -405,21 +405,21 @@ Known voucher numbers from recent processing: 6-20
   }
 
   const voucherNumber = parseInt(args[0]);
-  const pointOfSale = args[1] ? parseInt(args[1]) : parseInt(process.env.AFIP_PTOVTA);
+  const pointOfSale = args[1] ? parseInt(args[1]) : config.afip.ptoVta;
 
   if (!voucherNumber || voucherNumber <= 0) {
     console.log('❌ Invalid voucher number. Please provide a positive integer.');
     return;
   }
 
-  const config = {
-    cuit: process.env.AFIP_CUIT,
-    environment: process.env.AFIP_ENVIRONMENT,
-    certPath: process.env.AFIP_CERT_PATH,
-    keyPath: process.env.AFIP_KEY_PATH
+  const afipConfig = {
+    cuit: config.afip.cuit,
+    environment: config.afip.environment,
+    certPath: config.afip.certPath,
+    keyPath: config.afip.keyPath
   };
 
-  const liveQuery = new LiveAfipQuery(config);
+  const liveQuery = new LiveAfipQuery(afipConfig);
 
   try {
     await liveQuery.initialize();

@@ -1,6 +1,6 @@
 const { AfipServices } = require('facturajs');
 const Database = require('../database/Database');
-require('dotenv').config();
+const config = require('../config');
 
 class FullAfipQuery {
   constructor(config) {
@@ -23,7 +23,7 @@ class FullAfipQuery {
   }
 
   async getFullInvoiceData(voucherNumber, pointOfSale = null, voucherType = 11) {
-    pointOfSale = pointOfSale || parseInt(process.env.AFIP_PTOVTA);
+    pointOfSale = pointOfSale || config.afip.ptoVta;
     console.log(`🔍 Getting full invoice data for voucher ${voucherNumber}`);
 
     try {
@@ -433,21 +433,21 @@ Known voucher numbers: 6-20
   }
 
   const voucherNumber = parseInt(args[0]);
-  const pointOfSale = args[1] ? parseInt(args[1]) : parseInt(process.env.AFIP_PTOVTA);
+  const pointOfSale = args[1] ? parseInt(args[1]) : config.afip.ptoVta;
 
   if (!voucherNumber || voucherNumber <= 0) {
     console.log('❌ Invalid voucher number.');
     return;
   }
 
-  const config = {
-    cuit: process.env.AFIP_CUIT,
-    environment: process.env.AFIP_ENVIRONMENT,
-    certPath: process.env.AFIP_CERT_PATH,
-    keyPath: process.env.AFIP_KEY_PATH
+  const afipConfig = {
+    cuit: config.afip.cuit,
+    environment: config.afip.environment,
+    certPath: config.afip.certPath,
+    keyPath: config.afip.keyPath
   };
 
-  const fullQuery = new FullAfipQuery(config);
+  const fullQuery = new FullAfipQuery(afipConfig);
 
   try {
     await fullQuery.initialize();

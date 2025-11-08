@@ -1,6 +1,7 @@
 const { AfipServices } = require('facturajs');
 const fs = require('fs');
 const path = require('path');
+const config = require('../config');
 
 class AfipService {
   constructor(config) {
@@ -14,7 +15,7 @@ class AfipService {
     try {
       const afipConfig = {
         homo: this.config.environment !== 'production',
-        cacheTokensPath: './.afip-tokens',
+        cacheTokensPath: config.afip.cacheTokensPath,
         tokensExpireInHours: 12
       };
 
@@ -136,7 +137,7 @@ class AfipService {
   }
 
   async getLastVoucherNumber(salePoint = null, voucherType = 11) {
-    salePoint = salePoint || parseInt(process.env.AFIP_PTOVTA);
+    salePoint = salePoint || config.afip.ptoVta;
     if (!this.initialized) {
       throw new Error('AFIP service not initialized');
     }

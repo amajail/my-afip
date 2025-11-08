@@ -1,6 +1,6 @@
 const Database = require('../database/Database');
 const AfipService = require('../services/AfipService');
-require('dotenv').config();
+const config = require('../config');
 
 class CAEInvoiceQuery {
   constructor(config) {
@@ -222,14 +222,14 @@ Known CAEs from recent processing:
     return;
   }
 
-  const config = {
-    cuit: process.env.AFIP_CUIT,
-    environment: process.env.AFIP_ENVIRONMENT,
-    certPath: process.env.AFIP_CERT_PATH,
-    keyPath: process.env.AFIP_KEY_PATH
+  const afipConfig = {
+    cuit: config.afip.cuit,
+    environment: config.afip.environment,
+    certPath: config.afip.certPath,
+    keyPath: config.afip.keyPath
   };
 
-  const queryService = new CAEInvoiceQuery(config);
+  const queryService = new CAEInvoiceQuery(afipConfig);
 
   try {
     await queryService.initialize();

@@ -97,8 +97,8 @@ INVOICE_INPUT_PATH=./data/invoices.csv
 INVOICE_OUTPUT_PATH=./data/processed
 
 # Binance API Configuration
-BINANCE_API_KEY=VgqfLZc9h6ytDYV2dvURSumrVqcZQ5z8bg4fhXaIQQOee2RcHjcYl5NAaATJbZRF
-BINANCE_SECRET_KEY=JGyjC39yGuKvos0TGf9ZUjXvkezFrJvra5d6GKgAkI16SyOmjC1IJX64Jci5Vipa
+BINANCE_API_KEY=your_binance_api_key_here
+BINANCE_SECRET_KEY=your_binance_secret_key_here
 ```
 
 ### AFIP Portal Configuration

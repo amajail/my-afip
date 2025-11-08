@@ -1,3 +1,5 @@
+const config = require('../config');
+
 class Invoice {
   constructor(data) {
     this.docType = data.docType || 11; // CUIT
@@ -35,7 +37,7 @@ class Invoice {
     
     const baseInvoice = {
       CantReg: 1,
-      PtoVta: parseInt(process.env.AFIP_PTOVTA), // Point of Sale from environment
+      PtoVta: config.afip.ptoVta, // Point of Sale from centralized config
       CbteTipo: invoiceType, // Factura C (11) for Monotributista, B (6) for others
       Concepto: this.concept,
       DocTipo: this.docNumber ? this.docType : 99, // 99 for "Sin Identificar" (unidentified)

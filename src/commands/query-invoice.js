@@ -1,6 +1,6 @@
 const { AfipServices } = require('facturajs');
 const fs = require('fs');
-require('dotenv').config();
+const config = require('../config');
 
 class InvoiceQueryService {
   constructor(config) {
@@ -258,15 +258,15 @@ Arguments:
     return;
   }
 
-  const config = {
-    cuit: process.env.AFIP_CUIT,
-    environment: process.env.AFIP_ENVIRONMENT,
-    certPath: process.env.AFIP_CERT_PATH,
-    keyPath: process.env.AFIP_KEY_PATH
+  const afipConfig = {
+    cuit: config.afip.cuit,
+    environment: config.afip.environment,
+    certPath: config.afip.certPath,
+    keyPath: config.afip.keyPath
   };
 
   try {
-    const queryService = new InvoiceQueryService(config);
+    const queryService = new InvoiceQueryService(afipConfig);
     await queryService.initialize();
 
     console.log(`🎯 Searching for CAE: ${cae} on Point of Sale: ${pointOfSale}`);
