@@ -9,7 +9,29 @@ describe('DatabaseOrderTracker', () => {
   let mockDb;
 
   beforeEach(() => {
-    mockDb = MockFactory.mockDatabase();
+    // Create mock database with actual methods used by DatabaseOrderTracker
+    mockDb = {
+      initialize: jest.fn().mockResolvedValue(),
+      close: jest.fn().mockResolvedValue(),
+      insertOrder: jest.fn().mockResolvedValue(1),
+      getSuccessfullyProcessedOrders: jest.fn().mockResolvedValue([]),
+      markOrderProcessed: jest.fn().mockResolvedValue(),
+      markOrderManual: jest.fn().mockResolvedValue(1),
+      getOrderStats: jest.fn().mockResolvedValue({
+        total_orders: 0,
+        processed_orders: 0,
+        successful_orders: 0,
+        failed_orders: 0,
+        manual_orders: 0,
+        automatic_orders: 0,
+        total_invoiced_amount: 0
+      }),
+      getProcessedOrders: jest.fn().mockResolvedValue([]),
+      getUnprocessedOrders: jest.fn().mockResolvedValue([]),
+      getOrdersByStatus: jest.fn().mockResolvedValue([]),
+      getCurrentMonthOrders: jest.fn().mockResolvedValue([]),
+      getCurrentMonthStats: jest.fn().mockResolvedValue({})
+    };
 
     const Database = require('../../../src/database/Database');
     Database.mockImplementation(() => mockDb);
@@ -22,65 +44,232 @@ describe('DatabaseOrderTracker', () => {
       await tracker.initialize();
 
       expect(mockDb.initialize).toHaveBeenCalledTimes(1);
-      expect(tracker.db).toBe(mockDb);
+      expect(tracker.initialized).toBe(true);
+    });
+
+    it('should not initialize twice', async () => {
+      await tracker.initialize();
+      await tracker.initialize();
+
+      expect(mockDb.initialize).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('addOrder', () => {
+  describe('insertOrders', () => {
     beforeEach(async () => {
       await tracker.initialize();
     });
 
-    it('should add new order to database', async () => {
+    it('should insert multiple orders successfully', async () => {
+      const orders = [
+        MockFactory.createBinanceOrder({ orderNumber: 'order_1' }),
+        MockFactory.createBinanceOrder({ orderNumber: 'order_2' })
+      ];
+
+      mockDb.insertOrder.mockResolvedValue(1);
+
+      const count = await tracker.insertOrders(orders);
+
+      expect(count).toBe(2);
+      expect(mockDb.insertOrder).toHaveBeenCalledTimes(2);
+      expect(mockDb.insertOrder).toHaveBeenCalledWith(orders[0]);
+      expect(mockDb.insertOrder).toHaveBeenCalledWith(orders[1]);
+    });
+
+    it('should handle insertion errors gracefully', async () => {
+      const orders = [
+        MockFactory.createBinanceOrder({ orderNumber: 'order_1' }),
+        MockFactory.createBinanceOrder({ orderNumber: 'order_2' })
+      ];
+
+      // First succeeds, second fails
+      mockDb.insertOrder
+        .mockResolvedValueOnce(1)
+        .mockRejectedValueOnce(new Error('UNIQUE constraint failed'));
+
+      const count = await tracker.insertOrders(orders);
+
+      // Should continue despite error and return count of successful insertions
+      expect(count).toBe(1);
+    });
+
+    it('should insert single order', async () => {
       const order = MockFactory.createBinanceOrder();
+      mockDb.insertOrder.mockResolvedValue(1);
 
-      // Mock successful insertion
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(null);
-      });
+      const count = await tracker.insertOrders([order]);
 
-      await tracker.addOrder(order);
+      expect(count).toBe(1);
+      expect(mockDb.insertOrder).toHaveBeenCalledWith(order);
+    });
+  });
 
-      expect(mockDb.db.run).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO orders'),
-        expect.arrayContaining([
-          order.order_number,
-          order.amount,
-          order.price,
-          order.total_price,
-          order.asset,
-          order.fiat,
-          order.trade_type,
-          order.create_time,
-          order.buyer_nickname,
-          order.seller_nickname
-        ]),
-        expect.any(Function)
+  describe('filterNewOrders', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should filter out successfully processed orders', async () => {
+      const orders = [
+        MockFactory.createBinanceOrder({ orderNumber: 'new_order_1' }),
+        MockFactory.createBinanceOrder({ orderNumber: 'processed_order' }),
+        MockFactory.createBinanceOrder({ orderNumber: 'new_order_2' })
+      ];
+
+      mockDb.insertOrder.mockResolvedValue(1);
+      mockDb.getSuccessfullyProcessedOrders.mockResolvedValue([
+        { order_number: 'processed_order', success: true, cae: '12345', processed_at: new Date(), processing_method: 'automatic' }
+      ]);
+
+      const result = await tracker.filterNewOrders(orders);
+
+      expect(result.newOrders).toHaveLength(2);
+      expect(result.newOrders.map(o => o.orderNumber)).toEqual(['new_order_1', 'new_order_2']);
+      expect(result.duplicates).toHaveLength(1);
+      expect(result.duplicates[0].orderNumber).toBe('processed_order');
+    });
+
+    it('should return all orders as new when none are processed', async () => {
+      const orders = [
+        MockFactory.createBinanceOrder(),
+        MockFactory.createBinanceOrder()
+      ];
+
+      mockDb.insertOrder.mockResolvedValue(1);
+      mockDb.getSuccessfullyProcessedOrders.mockResolvedValue([]);
+
+      const result = await tracker.filterNewOrders(orders);
+
+      expect(result.newOrders).toHaveLength(2);
+      expect(result.duplicates).toHaveLength(0);
+    });
+  });
+
+  describe('saveResults', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should save successful invoice results', async () => {
+      const results = [
+        MockFactory.createAfipSuccessResponse({ cae: 'CAE_123' })
+      ];
+      const orderNumbers = ['order_123'];
+
+      mockDb.markOrderProcessed.mockResolvedValue();
+
+      await tracker.saveResults(results, orderNumbers);
+
+      expect(mockDb.markOrderProcessed).toHaveBeenCalledWith(
+        'order_123',
+        results[0],
+        'automatic'
       );
     });
 
-    it('should handle duplicate orders gracefully', async () => {
-      const order = MockFactory.createBinanceOrder();
+    it('should save multiple results', async () => {
+      const results = [
+        MockFactory.createAfipSuccessResponse(),
+        MockFactory.createAfipErrorResponse()
+      ];
+      const orderNumbers = ['order_1', 'order_2'];
 
-      // Mock constraint error (duplicate)
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        const error = new Error('UNIQUE constraint failed');
-        error.code = 'SQLITE_CONSTRAINT_UNIQUE';
-        callback(error);
-      });
+      mockDb.markOrderProcessed.mockResolvedValue();
 
-      // Should not throw, just log the duplicate
-      await expect(tracker.addOrder(order)).resolves.toBeUndefined();
+      await tracker.saveResults(results, orderNumbers);
+
+      expect(mockDb.markOrderProcessed).toHaveBeenCalledTimes(2);
     });
 
-    it('should throw on other database errors', async () => {
-      const order = MockFactory.createBinanceOrder();
+    it('should handle errors in saveResults gracefully', async () => {
+      const results = [MockFactory.createAfipSuccessResponse()];
+      const orderNumbers = ['order_123'];
 
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(new Error('Database connection failed'));
-      });
+      mockDb.markOrderProcessed.mockRejectedValue(new Error('Database error'));
 
-      await expect(tracker.addOrder(order)).rejects.toThrow('Database connection failed');
+      // Should not throw, just log error
+      await expect(tracker.saveResults(results, orderNumbers)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('markManualInvoice', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should mark order as manually processed', async () => {
+      mockDb.markOrderManual.mockResolvedValue(1);
+
+      const result = await tracker.markManualInvoice('order_123', 'CAE_MANUAL', 99, 'Manual note');
+
+      expect(result).toBe(true);
+      expect(mockDb.markOrderManual).toHaveBeenCalledWith(
+        'order_123',
+        'CAE_MANUAL',
+        99,
+        'Manual note'
+      );
+    });
+
+    it('should return false for non-existent order', async () => {
+      mockDb.markOrderManual.mockResolvedValue(0);
+
+      const result = await tracker.markManualInvoice('non_existent', 'CAE', 1);
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockDb.markOrderManual.mockRejectedValue(new Error('Database error'));
+
+      const result = await tracker.markManualInvoice('order_123', 'CAE', 1);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getStats', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should return order statistics', async () => {
+      const mockStats = {
+        total_orders: 100,
+        processed_orders: 75,
+        successful_orders: 70,
+        failed_orders: 5,
+        manual_orders: 10,
+        automatic_orders: 65,
+        total_invoiced_amount: 1500000
+      };
+
+      mockDb.getOrderStats.mockResolvedValue(mockStats);
+
+      const stats = await tracker.getStats();
+
+      expect(stats).toEqual(mockStats);
+      expect(mockDb.getOrderStats).toHaveBeenCalled();
+    });
+  });
+
+  describe('getProcessedOrders', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should return processed orders', async () => {
+      const mockOrders = [
+        MockFactory.createDatabaseOrder({ order_number: 'order_1', success: true }),
+        MockFactory.createDatabaseOrder({ order_number: 'order_2', success: true })
+      ];
+
+      mockDb.getProcessedOrders.mockResolvedValue(mockOrders);
+
+      const orders = await tracker.getProcessedOrders();
+
+      expect(orders).toEqual(mockOrders);
+      expect(mockDb.getProcessedOrders).toHaveBeenCalled();
     });
   });
 
@@ -95,195 +284,91 @@ describe('DatabaseOrderTracker', () => {
         MockFactory.createDatabaseOrder({ order_number: 'order_2', success: null })
       ];
 
-      mockDb.db.all.mockImplementation((sql, params, callback) => {
-        callback(null, mockOrders);
-      });
+      mockDb.getUnprocessedOrders.mockResolvedValue(mockOrders);
 
-      const result = await tracker.getUnprocessedOrders();
+      const orders = await tracker.getUnprocessedOrders();
 
-      expect(result).toEqual(mockOrders);
-      expect(mockDb.db.all).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE success IS NULL OR success = 0'),
-        [],
-        expect.any(Function)
-      );
+      expect(orders).toEqual(mockOrders);
+      expect(mockDb.getUnprocessedOrders).toHaveBeenCalled();
     });
 
     it('should return empty array when no unprocessed orders', async () => {
-      mockDb.db.all.mockImplementation((sql, params, callback) => {
-        callback(null, []);
-      });
+      mockDb.getUnprocessedOrders.mockResolvedValue([]);
 
-      const result = await tracker.getUnprocessedOrders();
+      const orders = await tracker.getUnprocessedOrders();
 
-      expect(result).toEqual([]);
-    });
-
-    it('should handle database errors', async () => {
-      mockDb.db.all.mockImplementation((sql, params, callback) => {
-        callback(new Error('Database query failed'));
-      });
-
-      await expect(tracker.getUnprocessedOrders()).rejects.toThrow('Database query failed');
+      expect(orders).toEqual([]);
     });
   });
 
-  describe('markOrderProcessed', () => {
+  describe('getOrdersByStatus', () => {
     beforeEach(async () => {
       await tracker.initialize();
     });
 
-    it('should mark order as successfully processed', async () => {
-      const orderNumber = 'test_order_123';
-      const result = MockFactory.createAfipSuccessResponse({
-        cae: '75398279001644',
-        voucherNumber: 21
-      });
-
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(null);
-      });
-
-      await tracker.markOrderProcessed(orderNumber, result, 'automatic');
-
-      expect(mockDb.db.run).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE orders SET'),
-        expect.arrayContaining([
-          true,
-          '75398279001644',
-          21,
-          'automatic',
-          null, // No error message
-          expect.any(String), // Timestamp
-          orderNumber
-        ]),
-        expect.any(Function)
-      );
-    });
-
-    it('should mark order as failed', async () => {
-      const orderNumber = 'test_order_123';
-      const result = MockFactory.createAfipErrorResponse('AFIP validation failed');
-
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(null);
-      });
-
-      await tracker.markOrderProcessed(orderNumber, result, 'automatic');
-
-      expect(mockDb.db.run).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE orders SET'),
-        expect.arrayContaining([
-          false,
-          null, // No CAE
-          null, // No voucher number
-          'automatic',
-          'AFIP validation failed',
-          expect.any(String), // Timestamp
-          orderNumber
-        ]),
-        expect.any(Function)
-      );
-    });
-
-    it('should handle manual processing', async () => {
-      const orderNumber = 'test_order_123';
-      const result = {
-        success: true,
-        cae: 'manual_cae_123',
-        voucherNumber: 99,
-        manual: true
-      };
-
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(null);
-      });
-
-      await tracker.markOrderProcessed(orderNumber, result, 'manual');
-
-      const updateCall = mockDb.db.run.mock.calls[0];
-      expect(updateCall[1]).toContain('manual'); // Processing method
-      expect(updateCall[1]).toContain('manual_cae_123'); // Manual CAE
-      expect(updateCall[1]).toContain(99); // Manual voucher number
-    });
-  });
-
-  describe('getOrderByNumber', () => {
-    beforeEach(async () => {
-      await tracker.initialize();
-    });
-
-    it('should return order by number', async () => {
-      const expectedOrder = MockFactory.createDatabaseOrder({
-        order_number: 'test_order_123'
-      });
-
-      mockDb.db.get.mockImplementation((sql, params, callback) => {
-        callback(null, expectedOrder);
-      });
-
-      const result = await tracker.getOrderByNumber('test_order_123');
-
-      expect(result).toEqual(expectedOrder);
-      expect(mockDb.db.get).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE order_number = ?'),
-        ['test_order_123'],
-        expect.any(Function)
-      );
-    });
-
-    it('should return null for non-existent order', async () => {
-      mockDb.db.get.mockImplementation((sql, params, callback) => {
-        callback(null, null);
-      });
-
-      const result = await tracker.getOrderByNumber('non_existent');
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('getProcessingStatistics', () => {
-    beforeEach(async () => {
-      await tracker.initialize();
-    });
-
-    it('should return processing statistics', async () => {
-      const mockStats = [
-        { success: null, count: 5 }, // Pending
-        { success: 1, count: 15 },   // Successful
-        { success: 0, count: 2 }     // Failed
+    it('should return orders by success status', async () => {
+      const mockOrders = [
+        MockFactory.createDatabaseOrder({ success: true })
       ];
 
-      mockDb.db.all.mockImplementation((sql, params, callback) => {
-        callback(null, mockStats);
-      });
+      mockDb.getOrdersByStatus.mockResolvedValue(mockOrders);
 
-      const result = await tracker.getProcessingStatistics();
+      const orders = await tracker.getOrdersByStatus(true);
 
-      expect(result).toEqual({
-        total: 22,
-        pending: 5,
-        successful: 15,
-        failed: 2,
-        successRate: 15 / 17 // Successful / (Successful + Failed)
-      });
+      expect(orders).toEqual(mockOrders);
+      expect(mockDb.getOrdersByStatus).toHaveBeenCalledWith(true);
     });
 
-    it('should handle zero processed orders', async () => {
-      mockDb.db.all.mockImplementation((sql, params, callback) => {
-        callback(null, [{ success: null, count: 10 }]);
-      });
+    it('should return failed orders', async () => {
+      const mockOrders = [
+        MockFactory.createDatabaseOrder({ success: false })
+      ];
 
-      const result = await tracker.getProcessingStatistics();
+      mockDb.getOrdersByStatus.mockResolvedValue(mockOrders);
 
-      expect(result).toEqual({
-        total: 10,
-        pending: 10,
-        successful: 0,
-        failed: 0,
-        successRate: 0
-      });
+      const orders = await tracker.getOrdersByStatus(false);
+
+      expect(orders).toEqual(mockOrders);
+      expect(mockDb.getOrdersByStatus).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('getCurrentMonthOrders', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should return current month orders', async () => {
+      const mockOrders = [
+        MockFactory.createDatabaseOrder()
+      ];
+
+      mockDb.getCurrentMonthOrders.mockResolvedValue(mockOrders);
+
+      const orders = await tracker.getCurrentMonthOrders();
+
+      expect(orders).toEqual(mockOrders);
+      expect(mockDb.getCurrentMonthOrders).toHaveBeenCalled();
+    });
+  });
+
+  describe('getCurrentMonthStats', () => {
+    beforeEach(async () => {
+      await tracker.initialize();
+    });
+
+    it('should return current month statistics', async () => {
+      const mockStats = {
+        total_orders: 30,
+        total_amount: 500000
+      };
+
+      mockDb.getCurrentMonthStats.mockResolvedValue(mockStats);
+
+      const stats = await tracker.getCurrentMonthStats();
+
+      expect(stats).toEqual(mockStats);
+      expect(mockDb.getCurrentMonthStats).toHaveBeenCalled();
     });
   });
 
@@ -294,35 +379,44 @@ describe('DatabaseOrderTracker', () => {
 
       expect(mockDb.close).toHaveBeenCalledTimes(1);
     });
+
+    it('should handle close when database not initialized', async () => {
+      const freshTracker = new DatabaseOrderTracker();
+
+      // Should not throw
+      await expect(freshTracker.close()).resolves.toBeUndefined();
+    });
   });
 
-  describe('error handling', () => {
-    beforeEach(async () => {
+  describe('integration scenarios', () => {
+    it('should handle full workflow: insert -> filter -> save results', async () => {
       await tracker.initialize();
-    });
 
-    it('should handle database connection loss', async () => {
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(new Error('database is locked'));
-      });
+      // Step 1: Insert orders
+      const orders = [
+        MockFactory.createBinanceOrder({ orderNumber: 'new_1' }),
+        MockFactory.createBinanceOrder({ orderNumber: 'new_2' })
+      ];
 
-      const order = MockFactory.createBinanceOrder();
+      mockDb.insertOrder.mockResolvedValue(1);
+      mockDb.getSuccessfullyProcessedOrders.mockResolvedValue([]);
 
-      await expect(tracker.addOrder(order)).rejects.toThrow('database is locked');
-    });
+      const count = await tracker.insertOrders(orders);
+      expect(count).toBe(2);
 
-    it('should handle malformed data gracefully', async () => {
-      // Test with missing required fields
-      const incompleteOrder = {
-        order_number: 'test_123'
-        // Missing other required fields
-      };
+      // Step 2: Filter orders
+      const filtered = await tracker.filterNewOrders(orders);
+      expect(filtered.newOrders).toHaveLength(2);
 
-      mockDb.db.run.mockImplementation((sql, params, callback) => {
-        callback(null);
-      });
+      // Step 3: Save results
+      const results = [
+        MockFactory.createAfipSuccessResponse(),
+        MockFactory.createAfipSuccessResponse()
+      ];
+      mockDb.markOrderProcessed.mockResolvedValue();
 
-      await expect(tracker.addOrder(incompleteOrder)).resolves.toBeUndefined();
+      await tracker.saveResults(results, ['new_1', 'new_2']);
+      expect(mockDb.markOrderProcessed).toHaveBeenCalledTimes(2);
     });
   });
 });

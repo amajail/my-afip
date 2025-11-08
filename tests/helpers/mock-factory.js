@@ -3,6 +3,9 @@
 class MockFactory {
   static createBinanceOrder(overrides = {}) {
     const timestamp = Date.now();
+    const date = new Date(timestamp);
+    const order_date = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+
     return {
       order_number: `test_order_${timestamp}`,
       amount: '100.50',
@@ -12,6 +15,7 @@ class MockFactory {
       fiat: 'ARS',
       trade_type: 'SELL',
       create_time: timestamp.toString(),
+      order_date: order_date,  // Add required order_date field
       buyer_nickname: 'test_buyer',
       seller_nickname: 'test_seller',
       ...overrides
