@@ -1,4 +1,5 @@
 const { AfipServices } = require('facturajs');
+const logger = require('../utils/logger');
 const Database = require('../database/Database');
 const config = require('../config');
 

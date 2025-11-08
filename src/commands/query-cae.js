@@ -1,4 +1,5 @@
 const Database = require('../database/Database');
+const logger = require('../utils/logger');
 const AfipService = require('../services/AfipService');
 const config = require('../config');
 

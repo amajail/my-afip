@@ -1,31 +1,40 @@
 const DatabaseOrderTracker = require('../utils/DatabaseOrderTracker');
+const logger = require('../utils/logger');
 
 async function checkOrderStatus() {
   const dbTracker = new DatabaseOrderTracker();
   try {
     const stats = await dbTracker.getStats();
-    console.log(`📊 Order Processing Status (Database):`);
-    console.log(`  - Total orders: ${stats.total_orders}`);
-    console.log(`  - Processed: ${stats.processed_orders}`);
-    console.log(`  - Unprocessed: ${stats.total_orders - stats.processed_orders}`);
-    console.log(`  ✅ Successful: ${stats.successful_orders}`);
-    console.log(`  ❌ Failed: ${stats.failed_orders}`);
-    console.log(`  🔧 Manual: ${stats.manual_orders}`);
-    console.log(`  🤖 Automatic: ${stats.automatic_orders}`);
-    if (stats.total_invoiced_amount) {
-      console.log(`  💰 Total invoiced: $${stats.total_invoiced_amount.toLocaleString()}`);
-    }
+    logger.info('Order Processing Status (Database)', {
+      totalOrders: stats.total_orders,
+      processed: stats.processed_orders,
+      unprocessed: stats.total_orders - stats.processed_orders,
+      successful: stats.successful_orders,
+      failed: stats.failed_orders,
+      manual: stats.manual_orders,
+      automatic: stats.automatic_orders,
+      totalInvoicedAmount: stats.total_invoiced_amount,
+      event: 'status_check'
+    });
     if (stats.processed_orders > 0) {
-      console.log(`\n📋 Recent processed orders:`);
+      logger.info('Recent processed orders');
       const recentOrders = await dbTracker.getProcessedOrders();
       recentOrders.slice(0, 5).forEach(order => {
-        const method = order.processing_method === 'manual' ? '🔧' : '🤖';
-        const status = order.success ? '✅' : '❌';
-        const cae = order.cae ? ` CAE: ${order.cae}` : '';
-        console.log(`  ${method} ${status} ${order.order_number}${cae}`);
+        const method = order.processing_method === 'manual' ? 'Manual' : 'Auto';
+        const status = order.success ? 'Success' : 'Failed';
+        logger.info(`${method} ${status} ${order.order_number}`, {
+          orderNumber: order.order_number,
+          method: order.processing_method,
+          success: order.success,
+          cae: order.cae,
+          event: 'status_recent_order'
+        });
       });
       if (recentOrders.length > 5) {
-        console.log(`  ... and ${recentOrders.length - 5} more`);
+        logger.info(`... and ${recentOrders.length - 5} more processed orders`, {
+          additionalOrders: recentOrders.length - 5,
+          event: 'status_more_orders'
+        });
       }
     }
   } finally {

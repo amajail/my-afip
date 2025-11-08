@@ -1,4 +1,5 @@
 const Database = require('../database/Database');
+const logger = require('./logger');
 
 class DatabaseOrderTracker {
   constructor() {
@@ -22,7 +23,11 @@ class DatabaseOrderTracker {
           await this.db.insertOrder(order);
           return 1;
         } catch (error) {
-          console.warn(`Warning: Could not insert order ${order.orderNumber}:`, error.message);
+          logger.warn('Could not insert order', {
+            orderNumber: order.orderNumber,
+            error: error.message,
+            event: 'order_insert_failed'
+          });
           return 0;
         }
       })
@@ -70,7 +75,11 @@ class DatabaseOrderTracker {
         try {
           await this.db.markOrderProcessed(orderNumber, result, 'automatic');
         } catch (error) {
-          console.error(`Error saving result for order ${orderNumber}:`, error.message);
+          logger.error('Error saving result for order', {
+            orderNumber,
+            error: error.message,
+            event: 'save_result_failed'
+          });
         }
       }
     }
@@ -82,14 +91,26 @@ class DatabaseOrderTracker {
     try {
       const changes = await this.db.markOrderManual(orderNumber, cae, voucherNumber, notes);
       if (changes > 0) {
-        console.log(`✅ Order ${orderNumber} marked as manually processed (CAE: ${cae})`);
+        logger.info('Order marked as manually processed', {
+          orderNumber,
+          cae,
+          voucherNumber,
+          event: 'manual_invoice_marked'
+        });
         return true;
       } else {
-        console.warn(`⚠️  Order ${orderNumber} not found in database`);
+        logger.warn('Order not found in database', {
+          orderNumber,
+          event: 'manual_invoice_order_not_found'
+        });
         return false;
       }
     } catch (error) {
-      console.error(`Error marking manual invoice for order ${orderNumber}:`, error.message);
+      logger.error('Error marking manual invoice for order', {
+        orderNumber,
+        error: error.message,
+        event: 'manual_invoice_mark_failed'
+      });
       return false;
     }
   }

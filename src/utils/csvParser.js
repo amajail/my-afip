@@ -1,6 +1,7 @@
 const csv = require('csv-parser');
 const fs = require('fs');
 const Invoice = require('../models/Invoice');
+const logger = require('./logger');
 
 class CSVParser {
   static async parseInvoices(filePath) {
@@ -58,7 +59,10 @@ class CSVParser {
     ].join('\n');
 
     fs.writeFileSync(outputPath, sampleData);
-    console.log(`Sample CSV created at: ${outputPath}`);
+    logger.info('Sample CSV created', {
+      outputPath,
+      event: 'sample_csv_created'
+    });
   }
 }
 

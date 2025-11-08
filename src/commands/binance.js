@@ -1,29 +1,41 @@
 const BinanceOrderFetcher = require('../../scripts/fetchBinanceOrders');
+const logger = require('../utils/logger');
 
 async function testBinanceConnection(binanceService, config) {
   if (!config.binanceApiKey || !config.binanceSecretKey) {
-    console.log('❌ Binance API credentials not configured');
-    console.log('Please set BINANCE_API_KEY and BINANCE_SECRET_KEY in your .env file');
+    logger.warn('Binance API credentials not configured. Please set BINANCE_API_KEY and BINANCE_SECRET_KEY in your .env file', {
+      event: 'binance_credentials_missing'
+    });
     return;
   }
   try {
     binanceService.initialize();
     const result = await binanceService.testConnection();
     if (result.success) {
-      console.log('✅ Binance API connection successful');
-      console.log('🔑 API Key configured correctly');
+      logger.info('Binance API connection successful - API Key configured correctly', {
+        event: 'binance_connection_test_success'
+      });
     } else {
-      console.log('❌ Binance API connection failed');
-      console.log(`Error: ${result.error}`);
+      logger.error('Binance API connection failed', {
+        error: result.error,
+        event: 'binance_connection_test_failed'
+      });
     }
   } catch (error) {
-    console.log('❌ Binance API test failed');
-    console.log(`Error: ${error.message}`);
+    logger.error('Binance API test failed', {
+      error: error.message,
+      event: 'binance_test_exception'
+    });
   }
 }
 
 async function fetchBinanceOrders(binanceService, days = 7, tradeType = 'SELL', autoProcess = false, config = null, afipService = null) {
-  console.log('📡 Fetching orders from Binance API...');
+  logger.info('Fetching orders from Binance API', {
+    days,
+    tradeType,
+    autoProcess,
+    event: 'binance_fetch_start'
+  });
   const fetcher = new BinanceOrderFetcher();
   try {
     await fetcher.initialize();
@@ -32,30 +44,47 @@ async function fetchBinanceOrders(binanceService, days = 7, tradeType = 'SELL', 
     const result = await fetcher.fetchToDatabase({ days, tradeType });
 
     if (result.success) {
-      console.log(`✅ Successfully fetched ${result.ordersCount} orders`);
-      console.log(`💾 New orders stored: ${result.newOrdersCount}`);
+      logger.info('Successfully fetched Binance orders', {
+        ordersCount: result.ordersCount,
+        newOrdersCount: result.newOrdersCount,
+        event: 'binance_fetch_success'
+      });
 
       if (autoProcess && result.newOrdersCount > 0) {
-        console.log('\n🔄 Auto-processing new orders to AFIP invoices...');
+        logger.info('Auto-processing new orders to AFIP invoices', {
+          newOrdersCount: result.newOrdersCount,
+          event: 'auto_process_start'
+        });
         const { processOrders } = require('./orders');
         const processResult = await processOrders(config || {}, afipService); // Pass config and afipService
-        console.log('📊 Processing summary:');
-        console.log(`  - Orders processed: ${processResult?.processed || 0}`);
-        console.log(`  - Successful: ${processResult?.successful || 0}`);
-        console.log(`  - Failed: ${processResult?.failed || 0}`);
+        logger.info('Processing summary', {
+          processed: processResult?.processed || 0,
+          successful: processResult?.successful || 0,
+          failed: processResult?.failed || 0,
+          event: 'auto_process_complete'
+        });
       }
     } else {
-      console.log(`❌ Failed to fetch orders: ${result.error}`);
+      logger.error('Failed to fetch orders', {
+        error: result.error,
+        event: 'binance_fetch_failed'
+      });
     }
     return result;
   } catch (error) {
-    console.log(`❌ Binance fetch error: ${error.message}`);
+    logger.error('Binance fetch error', {
+      error: error.message,
+      event: 'binance_fetch_exception'
+    });
     return { success: false, error: error.message };
   }
 }
 
 async function fetchBinanceMonth(tradeType, processOrders) {
-  console.log('📅 Fetching current month orders from Binance...');
+  logger.info('Fetching current month orders from Binance', {
+    tradeType,
+    event: 'binance_month_fetch_start'
+  });
   const fetcher = new BinanceOrderFetcher();
   try {
     await fetcher.initialize();
@@ -75,21 +104,32 @@ async function fetchBinanceMonth(tradeType, processOrders) {
         await dbTracker.initialize();
         const insertedCount = await dbTracker.insertOrders(orders);
 
-        console.log(`✅ Fetched ${orders.length} orders for current month`);
-        console.log(`💾 New orders stored: ${insertedCount}`);
+        logger.info('Fetched current month orders', {
+          totalOrders: orders.length,
+          newOrdersStored: insertedCount,
+          event: 'binance_month_fetch_success'
+        });
 
         if (insertedCount > 0) {
-          console.log('🔄 Processing new orders to invoices...');
+          logger.info('Processing new orders to invoices', {
+            count: insertedCount,
+            event: 'month_orders_process_start'
+          });
           await processOrders();
         }
       } finally {
         await dbTracker.close();
       }
     } else {
-      console.log('ℹ️  No orders found for current month');
+      logger.info('No orders found for current month', {
+        event: 'binance_month_no_orders'
+      });
     }
   } catch (error) {
-    console.log(`❌ Failed: ${error.message}`);
+    logger.error('Failed to fetch current month orders', {
+      error: error.message,
+      event: 'binance_month_fetch_failed'
+    });
   }
 }
 

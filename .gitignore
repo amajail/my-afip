@@ -116,8 +116,12 @@ ehthumbs.db
 Thumbs.db
 
 # Logs
-logs
+logs/
 *.log
+error.log
+combined.log
+exceptions.log
+rejections.log
 
 # Temporary files
 tmp/

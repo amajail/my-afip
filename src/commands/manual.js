@@ -1,18 +1,27 @@
 const DatabaseOrderTracker = require('../utils/DatabaseOrderTracker');
+const logger = require('../utils/logger');
 
 async function markManualInvoice(orderNumber, cae, voucherNumber, notes) {
   const dbTracker = new DatabaseOrderTracker();
   try {
-    console.log(`🔧 Marking order ${orderNumber} as manually processed...`);
+    logger.debug('Marking order as manually processed', {
+      orderNumber,
+      event: 'manual_invoice_mark_start'
+    });
     const success = await dbTracker.markManualInvoice(orderNumber, cae, voucherNumber, notes);
     if (success) {
-      console.log(`✅ Successfully marked as manual invoice`);
-      console.log(`  - Order: ${orderNumber}`);
-      console.log(`  - CAE: ${cae}`);
-      console.log(`  - Voucher: ${voucherNumber}`);
-      if (notes) console.log(`  - Notes: ${notes}`);
+      logger.info('Successfully marked as manual invoice', {
+        orderNumber,
+        cae,
+        voucherNumber,
+        notes,
+        event: 'manual_invoice_marked_success'
+      });
     } else {
-      console.log(`❌ Failed to mark order as manual invoice`);
+      logger.warn('Failed to mark order as manual invoice', {
+        orderNumber,
+        event: 'manual_invoice_mark_failed'
+      });
     }
   } finally {
     await dbTracker.close();

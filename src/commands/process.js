@@ -1,4 +1,5 @@
 const fs = require('fs');
+const logger = require('../utils/logger');
 const CSVParser = require('../utils/csvParser');
 
 async function processInvoices(app, inputFile) {
