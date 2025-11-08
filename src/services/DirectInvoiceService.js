@@ -1,6 +1,8 @@
 const DatabaseOrderTracker = require('../utils/DatabaseOrderTracker');
 const AfipService = require('./AfipService');
 const Invoice = require('../models/Invoice');
+const logger = require('../utils/logger');
+const { ErrorHandler } = require('../utils/errors');
 
 class DirectInvoiceService {
   constructor(config, afipService = null) {
@@ -16,21 +18,30 @@ class DirectInvoiceService {
     if (!this.afipService.initialized) {
       await this.afipService.initialize();
     }
-    console.log('🔗 Direct Invoice Service initialized (Database → AFIP)');
+    logger.info('Direct Invoice Service initialized', {
+      event: 'direct_invoice_service_initialized'
+    });
   }
 
   async processUnprocessedOrders() {
-    console.log('🔍 Loading unprocessed orders from database...');
+    logger.debug('Loading unprocessed orders from database', {
+      event: 'unprocessed_orders_load_start'
+    });
 
     // Get orders that haven't been processed yet
     const unprocessedOrders = await this.dbTracker.getUnprocessedOrders();
 
     if (unprocessedOrders.length === 0) {
-      console.log('✅ No unprocessed orders found');
+      logger.info('No unprocessed orders found', {
+        event: 'no_unprocessed_orders'
+      });
       return { processed: 0, successful: 0, failed: 0 };
     }
 
-    console.log(`📋 Found ${unprocessedOrders.length} unprocessed orders`);
+    logger.info('Found unprocessed orders', {
+      count: unprocessedOrders.length,
+      event: 'unprocessed_orders_found'
+    });
 
     // Convert all orders to invoices first
     const invoices = unprocessedOrders.map(order => {
@@ -75,7 +86,11 @@ class DirectInvoiceService {
         });
 
       } catch (error) {
-        console.error(`❌ Error updating database for order ${order.order_number}:`, error.message);
+        logger.error('Error updating database for order', {
+          orderNumber: order.order_number,
+          error: error.message,
+          event: 'order_update_failed'
+        });
         failed++;
         finalResults.push({
           orderNumber: order.order_number,
@@ -85,10 +100,12 @@ class DirectInvoiceService {
       }
     }
 
-    console.log(`\n📊 Processing Summary:`);
-    console.log(`  - Total processed: ${successful + failed}`);
-    console.log(`  - Successful: ${successful}`);
-    console.log(`  - Failed: ${failed}`);
+    logger.info('Processing summary', {
+      totalProcessed: successful + failed,
+      successful,
+      failed,
+      event: 'processing_complete'
+    });
 
     return {
       processed: successful + failed,

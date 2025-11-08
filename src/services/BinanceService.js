@@ -1,5 +1,14 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const logger = require('../utils/logger');
+const {
+  BinanceError,
+  BinanceAuthenticationError,
+  BinanceConnectionError,
+  BinanceRateLimitError,
+  ConfigurationError,
+  ErrorHandler
+} = require('../utils/errors');
 
 class BinanceService {
   constructor(config) {
@@ -10,10 +19,15 @@ class BinanceService {
 
   initialize() {
     if (!this.config.apiKey || !this.config.secretKey) {
-      throw new Error('Binance API key and secret are required');
+      throw new ConfigurationError(
+        'Binance API credentials not configured',
+        ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY']
+      );
     }
     this.initialized = true;
-    console.log('📡 Binance API service initialized');
+    logger.info('Binance API service initialized', {
+      event: 'binance_initialized'
+    });
   }
 
   // Create HMAC SHA256 signature for authenticated requests
@@ -34,7 +48,7 @@ class BinanceService {
   // Make authenticated API request
   async makeAuthenticatedRequest(endpoint, params = {}) {
     if (!this.initialized) {
-      throw new Error('Binance service not initialized');
+      throw new BinanceError('Binance service not initialized', 'BINANCE_NOT_INITIALIZED');
     }
 
     // Add timestamp for signature
@@ -55,12 +69,48 @@ class BinanceService {
 
       return response.data;
     } catch (error) {
+      // Handle different types of errors
       if (error.response) {
-        throw new Error(`Binance API Error: ${error.response.status} - ${error.response.data.msg || error.response.statusText}`);
+        const status = error.response.status;
+        const errorMsg = error.response.data?.msg || error.response.statusText;
+
+        // Rate limit error (HTTP 429)
+        if (status === 429) {
+          const retryAfter = error.response.headers['retry-after'] || 60;
+          throw new BinanceRateLimitError(
+            `Binance API rate limit exceeded: ${errorMsg}`,
+            parseInt(retryAfter),
+            { endpoint, status }
+          );
+        }
+
+        // Authentication error (HTTP 401)
+        if (status === 401) {
+          throw new BinanceAuthenticationError(
+            `Binance API authentication failed: ${errorMsg}`,
+            { endpoint, status }
+          );
+        }
+
+        // Other API errors
+        throw new BinanceError(
+          `Binance API Error (${status}): ${errorMsg}`,
+          'BINANCE_API_ERROR',
+          { endpoint, status, response: error.response.data }
+        );
       } else if (error.request) {
-        throw new Error('Binance API Error: No response received');
+        // Network error - no response received
+        throw new BinanceConnectionError(
+          'No response received from Binance API',
+          { endpoint, error: error.code }
+        );
       } else {
-        throw new Error(`Binance API Error: ${error.message}`);
+        // Other errors (setup, etc.)
+        throw new BinanceError(
+          `Binance API request failed: ${error.message}`,
+          'BINANCE_REQUEST_ERROR',
+          { endpoint }
+        );
       }
     }
   }
@@ -75,7 +125,12 @@ class BinanceService {
       rows = 100
     } = options;
 
-    console.log(`📊 Fetching P2P order history (${tradeType})...`);
+    logger.debug('Fetching P2P order history', {
+      tradeType,
+      page,
+      rows,
+      event: 'binance_p2p_fetch_start'
+    });
 
     const params = {
       tradeType,
@@ -94,12 +149,25 @@ class BinanceService {
     try {
       const response = await this.makeAuthenticatedRequest('/sapi/v1/c2c/orderMatch/listUserOrderHistory', params);
 
-      console.log(`✓ Retrieved ${response.data?.length || 0} P2P orders`);
+      logger.info('Retrieved P2P orders', {
+        count: response.data?.length || 0,
+        tradeType,
+        event: 'binance_p2p_fetch_success'
+      });
       return response;
 
     } catch (error) {
-      console.error('Error fetching P2P order history:', error.message);
-      throw error;
+      // Wrap error if needed and add context
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'BinanceService',
+        method: 'getP2POrderHistory',
+        tradeType,
+        page,
+        rows
+      });
+
+      logger.error('Error fetching P2P order history', ErrorHandler.formatForLogging(wrappedError));
+      throw wrappedError;
     }
   }
 
@@ -139,7 +207,12 @@ class BinanceService {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    console.log(`📅 Fetching ${tradeType} orders for ${startOfMonth.toLocaleDateString()} to ${endOfMonth.toLocaleDateString()}`);
+    logger.debug('Fetching current month P2P orders', {
+      tradeType,
+      startDate: startOfMonth.toLocaleDateString(),
+      endDate: endOfMonth.toLocaleDateString(),
+      event: 'binance_current_month_fetch'
+    });
 
     const startTime = startOfMonth.getTime();
     const endTime = endOfMonth.getTime();
@@ -186,23 +259,35 @@ class BinanceService {
   // Test API connection
   async testConnection() {
     try {
-      console.log('🔍 Testing Binance API connection...');
+      logger.debug('Testing Binance API connection', {
+        event: 'binance_connection_test_start'
+      });
 
       // Test with a simple request to get account info (requires less permissions)
       const response = await this.makeAuthenticatedRequest('/sapi/v1/account/status');
 
-      console.log('✅ Binance API connection successful');
+      logger.info('Binance API connection successful', {
+        event: 'binance_connection_test_success'
+      });
       return {
         success: true,
         message: 'Connected to Binance API successfully',
         accountStatus: response
       };
     } catch (error) {
-      console.error('❌ Binance API connection failed:', error.message);
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'BinanceService',
+        method: 'testConnection'
+      });
+
+      logger.error('Binance API connection failed', ErrorHandler.formatForLogging(wrappedError));
+
       return {
         success: false,
-        error: error.message,
-        message: 'Failed to connect to Binance API'
+        error: wrappedError.message,
+        errorCode: wrappedError.code,
+        message: wrappedError.getUserMessage(),
+        retryable: ErrorHandler.isRetryable(wrappedError)
       };
     }
   }

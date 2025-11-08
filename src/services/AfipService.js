@@ -2,6 +2,15 @@ const { AfipServices } = require('facturajs');
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
+const logger = require('../utils/logger');
+const {
+  AfipError,
+  AfipAuthenticationError,
+  AfipInvoiceRejectedError,
+  AfipConnectionError,
+  FileSystemError,
+  ErrorHandler
+} = require('../utils/errors');
 
 class AfipService {
   constructor(config) {
@@ -20,8 +29,21 @@ class AfipService {
       };
 
       if (this.config.environment === 'production') {
-        if (!fs.existsSync(this.config.certPath) || !fs.existsSync(this.config.keyPath)) {
-          throw new Error('Certificate files not found. Please provide valid certificate and key files.');
+        if (!fs.existsSync(this.config.certPath)) {
+          throw new FileSystemError(
+            'Certificate file not found',
+            this.config.certPath,
+            'read',
+            { environment: this.config.environment }
+          );
+        }
+        if (!fs.existsSync(this.config.keyPath)) {
+          throw new FileSystemError(
+            'Private key file not found',
+            this.config.keyPath,
+            'read',
+            { environment: this.config.environment }
+          );
         }
 
         afipConfig.certPath = this.config.certPath;
@@ -35,17 +57,27 @@ class AfipService {
       this.afip = new AfipServices(afipConfig);
       this.initialized = true;
 
-      console.log(`AFIP Service initialized in ${this.config.environment} mode (homo: ${afipConfig.homo})`);
+      logger.info('AFIP Service initialized', {
+        environment: this.config.environment,
+        homo: afipConfig.homo,
+        event: 'afip_initialized'
+      });
       return true;
     } catch (error) {
-      console.error('Failed to initialize AFIP service:', error.message);
-      throw error;
+      // Wrap error if not already an application error
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'AfipService',
+        method: 'initialize'
+      });
+
+      logger.error('Failed to initialize AFIP service', ErrorHandler.formatForLogging(wrappedError));
+      throw wrappedError;
     }
   }
 
   async createInvoice(invoice, voucherNumber = null) {
     if (!this.initialized) {
-      throw new Error('AFIP service not initialized');
+      throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
     }
 
     try {
@@ -56,10 +88,11 @@ class AfipService {
 
       const invoiceData = invoice.toAfipFormat();
 
-      console.log('Creating invoice in AFIP:', {
+      logger.debug('Creating invoice in AFIP', {
         docNumber: invoice.docNumber,
         totalAmount: invoice.totalAmount,
-        voucherNumber: voucherNumber
+        voucherNumber: voucherNumber,
+        event: 'invoice_creation_attempt'
       });
 
       // Build request in facturajs format
@@ -95,13 +128,27 @@ class AfipService {
           result: result
         };
       } else {
-        throw new Error(`AFIP rejected invoice: ${JSON.stringify(result)}`);
+        // AFIP rejected the invoice
+        throw new AfipInvoiceRejectedError(
+          'AFIP rejected invoice',
+          result,
+          { voucherNumber, invoice: invoiceData }
+        );
       }
     } catch (error) {
-      console.error('Error creating invoice:', error.message);
+      // Wrap error if needed
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'AfipService',
+        method: 'createInvoice',
+        voucherNumber
+      });
+
+      logger.error('Error creating invoice', ErrorHandler.formatForLogging(wrappedError));
+
       return {
         success: false,
-        error: error.message,
+        error: wrappedError.message,
+        errorCode: wrappedError.code,
         invoice: invoice
       };
     }
@@ -116,11 +163,19 @@ class AfipService {
         currentVoucherNumber++;
         const result = await this.createInvoice(invoice, currentVoucherNumber);
         results.push(result);
-        
+
         if (result.success) {
-          console.log(`✓ Invoice created: CAE ${result.cae}`);
+          logger.info('Invoice created successfully', {
+            cae: result.cae,
+            voucherNumber: currentVoucherNumber,
+            event: 'invoice_created'
+          });
         } else {
-          console.log(`✗ Invoice failed: ${result.error}`);
+          logger.warn('Invoice creation failed', {
+            error: result.error,
+            voucherNumber: currentVoucherNumber,
+            event: 'invoice_failed'
+          });
           currentVoucherNumber--; // Don't increment if failed
         }
       } catch (error) {
@@ -139,7 +194,7 @@ class AfipService {
   async getLastVoucherNumber(salePoint = null, voucherType = 11) {
     salePoint = salePoint || config.afip.ptoVta;
     if (!this.initialized) {
-      throw new Error('AFIP service not initialized');
+      throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
     }
 
     try {
@@ -162,35 +217,54 @@ class AfipService {
 
       return lastNumber;
     } catch (error) {
-      console.error('Error getting last voucher number:', error.message);
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'AfipService',
+        method: 'getLastVoucherNumber',
+        salePoint,
+        voucherType
+      });
+
+      logger.error('Error getting last voucher number', ErrorHandler.formatForLogging(wrappedError));
+
+      // Return 0 on error to allow graceful degradation
       return 0;
     }
   }
 
   async validateTaxpayer(cuit) {
     if (!this.initialized) {
-      throw new Error('AFIP service not initialized');
+      throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
     }
 
     try {
       // facturajs doesn't have RegisterScopeFour, this would need a different service
       // For now, return a placeholder - this feature can be implemented later if needed
-      console.log('Taxpayer validation not implemented with facturajs SDK');
+      logger.warn('Taxpayer validation not implemented with facturajs SDK', {
+        cuit,
+        event: 'taxpayer_validation_unavailable'
+      });
       return {
         valid: true,
         data: { message: 'Validation not available with current SDK' }
       };
     } catch (error) {
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'AfipService',
+        method: 'validateTaxpayer',
+        cuit
+      });
+
       return {
         valid: false,
-        error: error.message
+        error: wrappedError.message,
+        errorCode: wrappedError.code
       };
     }
   }
 
   async testAuthentication() {
     if (!this.initialized) {
-      throw new Error('AFIP service not initialized');
+      throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
     }
 
     try {
@@ -202,9 +276,17 @@ class AfipService {
         message: 'Authentication successful'
       };
     } catch (error) {
+      const wrappedError = ErrorHandler.wrap(error, {
+        service: 'AfipService',
+        method: 'testAuthentication'
+      });
+
+      logger.error('Authentication test failed', ErrorHandler.formatForLogging(wrappedError));
+
       return {
         success: false,
-        error: error.message,
+        error: wrappedError.message,
+        errorCode: wrappedError.code,
         message: 'Authentication failed'
       };
     }
