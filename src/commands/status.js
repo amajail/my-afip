@@ -1,5 +1,4 @@
 const DatabaseOrderTracker = require('../utils/DatabaseOrderTracker');
-const OrderTracker = require('../utils/orderTracker');
 
 async function checkOrderStatus() {
   const dbTracker = new DatabaseOrderTracker();
@@ -29,11 +28,6 @@ async function checkOrderStatus() {
         console.log(`  ... and ${recentOrders.length - 5} more`);
       }
     }
-    // Show legacy file tracker too
-    console.log(`\n📁 Legacy file tracker:`);
-    const fileTracker = new OrderTracker();
-    const fileCount = fileTracker.getProcessedOrdersCount();
-    console.log(`  - File-tracked orders: ${fileCount}`);
   } finally {
     await dbTracker.close();
   }
