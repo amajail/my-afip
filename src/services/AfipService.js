@@ -13,17 +13,102 @@ const {
 } = require('../utils/errors');
 const { CUITValidator } = require('../utils/validators');
 
+/**
+ * @typedef {Object} AfipServiceConfig
+ * @property {string} cuit - CUIT number (11 digits with valid checksum)
+ * @property {string} environment - Environment ('production' or 'testing')
+ * @property {string} certPath - Path to AFIP certificate file
+ * @property {string} keyPath - Path to AFIP private key file
+ */
+
+/**
+ * @typedef {Object} InvoiceCreationResult
+ * @property {boolean} success - Whether the operation succeeded
+ * @property {string} [cae] - CAE (Electronic Authorization Code) from AFIP
+ * @property {string} [caeExpiration] - CAE expiration date (YYYYMMDD)
+ * @property {number} [voucherNumber] - Assigned voucher number
+ * @property {Object} [result] - Full AFIP response
+ * @property {string} [error] - Error message (if failed)
+ * @property {string} [errorCode] - Error code (if failed)
+ * @property {Object} [invoice] - Original invoice data (if failed)
+ */
+
+/**
+ * @typedef {Object} TaxpayerValidationResult
+ * @property {boolean} valid - Whether taxpayer is valid
+ * @property {Object} [data] - Taxpayer data from AFIP
+ * @property {string} [error] - Error message (if invalid)
+ * @property {string} [errorCode] - Error code (if invalid)
+ */
+
+/**
+ * @typedef {Object} AuthenticationTestResult
+ * @property {boolean} success - Whether authentication succeeded
+ * @property {number} [lastVoucherNumber] - Last voucher number (if successful)
+ * @property {string} message - Result message
+ * @property {string} [error] - Error message (if failed)
+ * @property {string} [errorCode] - Error code (if failed)
+ */
+
+/**
+ * Service for interacting with AFIP (Argentine Tax Authority) electronic invoicing system
+ *
+ * Handles:
+ * - Invoice creation and submission to AFIP
+ * - CAE (Electronic Authorization Code) retrieval
+ * - Voucher number management
+ * - Authentication and certificate management
+ * - Taxpayer validation
+ *
+ * @class
+ */
 class AfipService {
+  /**
+   * Creates a new AfipService instance
+   *
+   * @param {AfipServiceConfig} config - Service configuration
+   * @throws {ValidationError} If CUIT format or checksum is invalid
+   *
+   * @example
+   * const service = new AfipService({
+   *   cuit: '20307153867',
+   *   environment: 'production',
+   *   certPath: './certificates/cert.crt',
+   *   keyPath: './certificates/private.key'
+   * });
+   */
   constructor(config) {
+    /** @type {AfipServiceConfig} - Service configuration */
     this.config = config;
+
+    /** @type {Object|null} - AFIP SDK instance (facturajs) */
     this.afip = null;
+
+    /** @type {boolean} - Whether service has been initialized */
     this.initialized = false;
 
     // Validate CUIT format and checksum
     CUITValidator.validateOrThrow(config.cuit);
+
+    /** @type {number} - CUIT number as integer */
     this.cuit = parseInt(config.cuit);
   }
 
+  /**
+   * Initializes the AFIP service with certificates and authentication
+   *
+   * Must be called before using any other service methods.
+   * Validates certificate files exist and sets up the AFIP SDK.
+   *
+   * @async
+   * @returns {Promise<boolean>} True if initialization succeeded
+   * @throws {FileSystemError} If certificate or key files not found
+   * @throws {AfipError} If AFIP SDK initialization fails
+   *
+   * @example
+   * await service.initialize();
+   * console.log('AFIP service ready');
+   */
   async initialize() {
     try {
       const afipConfig = {
@@ -79,6 +164,26 @@ class AfipService {
     }
   }
 
+  /**
+   * Creates and submits an invoice to AFIP for authorization
+   *
+   * Validates the invoice, gets a voucher number (if not provided),
+   * submits to AFIP, and returns the CAE (Electronic Authorization Code).
+   *
+   * @async
+   * @param {Invoice} invoice - Invoice object to submit
+   * @param {number} [voucherNumber=null] - Specific voucher number to use (auto-assigned if null)
+   * @returns {Promise<InvoiceCreationResult>} Result with CAE or error details
+   *
+   * @example
+   * const result = await service.createInvoice(invoice);
+   * if (result.success) {
+   *   console.log('CAE:', result.cae);
+   *   console.log('Voucher:', result.voucherNumber);
+   * } else {
+   *   console.error('Error:', result.error);
+   * }
+   */
   async createInvoice(invoice, voucherNumber = null) {
     if (!this.initialized) {
       throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
@@ -161,10 +266,25 @@ class AfipService {
     }
   }
 
+  /**
+   * Creates multiple invoices in sequence with automatic voucher numbering
+   *
+   * Processes invoices one by one, automatically assigning sequential voucher numbers.
+   * Continues processing even if individual invoices fail.
+   *
+   * @async
+   * @param {Array<Invoice>} invoices - Array of Invoice objects to submit
+   * @returns {Promise<Array<InvoiceCreationResult>>} Array of results for each invoice
+   *
+   * @example
+   * const results = await service.createMultipleInvoices([invoice1, invoice2, invoice3]);
+   * const successful = results.filter(r => r.success);
+   * console.log(`Created ${successful.length} of ${results.length} invoices`);
+   */
   async createMultipleInvoices(invoices) {
     const results = [];
     let currentVoucherNumber = await this.getLastVoucherNumber();
-    
+
     for (const invoice of invoices) {
       try {
         currentVoucherNumber++;
@@ -198,6 +318,22 @@ class AfipService {
     return results;
   }
 
+  /**
+   * Retrieves the last used voucher number from AFIP
+   *
+   * Used to determine the next voucher number for invoice creation.
+   * Returns 0 on error to allow graceful degradation.
+   *
+   * @async
+   * @param {number} [salePoint=null] - Point of sale number (uses config default if null)
+   * @param {number} [voucherType=11] - Voucher type (11=Type C, 6=Type B)
+   * @returns {Promise<number>} Last voucher number used, or 0 if error/not found
+   *
+   * @example
+   * const lastNumber = await service.getLastVoucherNumber();
+   * const nextNumber = lastNumber + 1;
+   * console.log('Next voucher number:', nextNumber);
+   */
   async getLastVoucherNumber(salePoint = null, voucherType = 11) {
     salePoint = salePoint || config.afip.ptoVta;
     if (!this.initialized) {
@@ -238,6 +374,24 @@ class AfipService {
     }
   }
 
+  /**
+   * Validates a taxpayer's CUIT with AFIP
+   *
+   * Note: Full taxpayer validation not available with current SDK (facturajs).
+   * Currently only validates CUIT format and checksum.
+   *
+   * @async
+   * @param {string} cuit - CUIT to validate
+   * @returns {Promise<TaxpayerValidationResult>} Validation result
+   *
+   * @example
+   * const result = await service.validateTaxpayer('20307153867');
+   * if (result.valid) {
+   *   console.log('Taxpayer is valid');
+   * } else {
+   *   console.error('Error:', result.error);
+   * }
+   */
   async validateTaxpayer(cuit) {
     if (!this.initialized) {
       throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
@@ -279,6 +433,24 @@ class AfipService {
     }
   }
 
+  /**
+   * Tests authentication with AFIP
+   *
+   * Verifies that certificates and credentials are valid by attempting
+   * to retrieve the last voucher number from AFIP.
+   *
+   * @async
+   * @returns {Promise<AuthenticationTestResult>} Authentication test result
+   *
+   * @example
+   * const authResult = await service.testAuthentication();
+   * if (authResult.success) {
+   *   console.log('Authentication successful');
+   *   console.log('Last voucher:', authResult.lastVoucherNumber);
+   * } else {
+   *   console.error('Authentication failed:', authResult.error);
+   * }
+   */
   async testAuthentication() {
     if (!this.initialized) {
       throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');
