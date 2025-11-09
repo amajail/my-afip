@@ -11,12 +11,16 @@ const {
   FileSystemError,
   ErrorHandler
 } = require('../utils/errors');
+const { CUITValidator } = require('../utils/validators');
 
 class AfipService {
   constructor(config) {
     this.config = config;
     this.afip = null;
     this.initialized = false;
+
+    // Validate CUIT format and checksum
+    CUITValidator.validateOrThrow(config.cuit);
     this.cuit = parseInt(config.cuit);
   }
 
@@ -81,6 +85,9 @@ class AfipService {
     }
 
     try {
+      // Validate invoice data before sending to AFIP
+      invoice.validateOrThrow();
+
       if (!voucherNumber) {
         const lastVoucher = await this.getLastVoucherNumber();
         voucherNumber = lastVoucher + 1;
@@ -237,6 +244,16 @@ class AfipService {
     }
 
     try {
+      // Validate CUIT format before processing
+      const cuitValidation = CUITValidator.validate(cuit);
+      if (!cuitValidation.valid) {
+        return {
+          valid: false,
+          error: cuitValidation.errors.join(', '),
+          errorCode: 'INVALID_CUIT'
+        };
+      }
+
       // facturajs doesn't have RegisterScopeFour, this would need a different service
       // For now, return a placeholder - this feature can be implemented later if needed
       logger.warn('Taxpayer validation not implemented with facturajs SDK', {

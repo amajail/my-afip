@@ -1,4 +1,5 @@
 const config = require('../config');
+const { InvoiceValidator } = require('../utils/validators');
 
 class Invoice {
   constructor(data) {
@@ -19,16 +20,21 @@ class Invoice {
   }
 
   validate() {
-    const errors = [];
-
-    if (!this.docDate) errors.push('Document date is required');
-    if (!this.netAmount || this.netAmount <= 0) errors.push('Net amount must be greater than 0');
-    if (!this.totalAmount || this.totalAmount <= 0) errors.push('Total amount must be greater than 0');
+    // Use comprehensive InvoiceValidator
+    const result = InvoiceValidator.validate(this);
 
     return {
-      isValid: errors.length === 0,
-      errors
+      isValid: result.valid,
+      errors: result.errors
     };
+  }
+
+  /**
+   * Validate and throw error if invalid
+   * @throws {ValidationError}
+   */
+  validateOrThrow() {
+    InvoiceValidator.validateOrThrow(this);
   }
 
   toAfipFormat() {

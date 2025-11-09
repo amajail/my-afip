@@ -3,6 +3,7 @@ const path = require('path');
 const config = require('./config');
 const AfipService = require('./services/AfipService');
 const BinanceService = require('./services/BinanceService');
+const { ConfigValidator } = require('./utils/validators');
 // Removed unused imports after refactor
 const { showCurrentMonthReport } = require('./commands/report');
 const { processOrdersDatabase } = require('./commands/orders-db');
@@ -45,9 +46,18 @@ class AfipInvoiceApp {
 
   async initialize() {
     console.log('🚀 Starting AFIP Invoice Application...');
-    if (!this.config.cuit) {
-      throw new Error('AFIP_CUIT environment variable is required');
+
+    // Validate all configuration at startup
+    console.log('🔍 Validating configuration...');
+    try {
+      ConfigValidator.validateStartupOrThrow(config);
+      console.log('✅ Configuration validated successfully');
+    } catch (error) {
+      console.error('❌ Configuration validation failed:');
+      console.error(error.message);
+      throw error;
     }
+
     await this.afipService.initialize();
     if (!fs.existsSync(path.dirname(this.config.outputPath))) {
       fs.mkdirSync(path.dirname(this.config.outputPath), { recursive: true });

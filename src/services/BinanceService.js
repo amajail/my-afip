@@ -9,6 +9,7 @@ const {
   ConfigurationError,
   ErrorHandler
 } = require('../utils/errors');
+const { ConfigValidator, DateValidator } = require('../utils/validators');
 
 class BinanceService {
   constructor(config) {
@@ -18,12 +19,15 @@ class BinanceService {
   }
 
   initialize() {
-    if (!this.config.apiKey || !this.config.secretKey) {
+    // Validate Binance configuration
+    const validation = ConfigValidator.validateBinanceConfig(this.config);
+    if (!validation.valid) {
       throw new ConfigurationError(
-        'Binance API credentials not configured',
-        ['BINANCE_API_KEY', 'BINANCE_SECRET_KEY']
+        validation.errors.join('; '),
+        validation.missingKeys
       );
     }
+
     this.initialized = true;
     logger.info('Binance API service initialized', {
       event: 'binance_initialized'
@@ -186,9 +190,29 @@ class BinanceService {
 
   // Get P2P orders for a specific date range
   async getP2POrdersByDateRange(startDate, endDate, tradeType = 'SELL') {
+    // Validate start date
+    DateValidator.validateOrThrow(startDate, {
+      allowPast: true,
+      allowFuture: true,
+      fieldName: 'startDate'
+    });
+
+    // Validate end date
+    DateValidator.validateOrThrow(endDate, {
+      allowPast: true,
+      allowFuture: true,
+      fieldName: 'endDate'
+    });
+
     const startTime = new Date(startDate).getTime();
     const endTime = new Date(endDate).getTime();
 
+    // Validate date range order
+    if (startTime > endTime) {
+      throw new Error('startDate cannot be after endDate');
+    }
+
+    // Validate date range span (max 30 days)
     if (endTime - startTime > 30 * 24 * 60 * 60 * 1000) {
       throw new Error('Date range cannot exceed 30 days');
     }
