@@ -3,6 +3,7 @@ const path = require('path');
 const config = require('./config');
 const AfipService = require('./services/AfipService');
 const BinanceService = require('./services/BinanceService');
+const DirectInvoiceService = require('./services/DirectInvoiceService');
 const { ConfigValidator } = require('./utils/validators');
 const { showCurrentMonthReport } = require('./commands/report');
 const { testBinanceConnection, fetchBinanceOrders, fetchBinanceMonth } = require('./commands/binance');
@@ -66,7 +67,11 @@ class AfipInvoiceApp {
   }
 
   async processOrders() {
-    return await processOrdersDatabase(this.config, this.afipService);
+    const directInvoiceService = new DirectInvoiceService(this.config, this.afipService);
+    await directInvoiceService.initialize();
+    const result = await directInvoiceService.processUnprocessedOrders();
+    await directInvoiceService.close();
+    return result;
   }
 
   async showCurrentMonthReport() {

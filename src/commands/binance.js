@@ -55,8 +55,11 @@ async function fetchBinanceOrders(binanceService, days = 7, tradeType = 'SELL', 
           newOrdersCount: result.newOrdersCount,
           event: 'auto_process_start'
         });
-        const { processOrders } = require('./orders');
-        const processResult = await processOrders(config || {}, afipService); // Pass config and afipService
+        const DirectInvoiceService = require('../services/DirectInvoiceService');
+        const directInvoiceService = new DirectInvoiceService(config || {}, afipService);
+        await directInvoiceService.initialize();
+        const processResult = await directInvoiceService.processUnprocessedOrders();
+        await directInvoiceService.close();
         logger.info('Processing summary', {
           processed: processResult?.processed || 0,
           successful: processResult?.successful || 0,
