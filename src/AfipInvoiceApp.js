@@ -4,26 +4,10 @@ const config = require('./config');
 const AfipService = require('./services/AfipService');
 const BinanceService = require('./services/BinanceService');
 const { ConfigValidator } = require('./utils/validators');
-// Removed unused imports after refactor
 const { showCurrentMonthReport } = require('./commands/report');
-const { processOrdersDatabase } = require('./commands/orders-db');
-const { checkOrderStatus } = require('./commands/status');
-const { processInvoices } = require('./commands/process');
-const { markManualInvoice } = require('./commands/manual');
-const { generateSampleData } = require('./commands/sample');
 const { testBinanceConnection, fetchBinanceOrders, fetchBinanceMonth } = require('./commands/binance');
 
 class AfipInvoiceApp {
-  async markManualInvoice(orderNumber, cae, voucherNumber, notes) {
-    await markManualInvoice(orderNumber, cae, voucherNumber, notes);
-  }
-  async checkOrderStatus() {
-    await checkOrderStatus();
-  }
-
-  async generateSampleData() {
-    await generateSampleData();
-  }
   constructor() {
     // Use centralized configuration
     this.config = {
