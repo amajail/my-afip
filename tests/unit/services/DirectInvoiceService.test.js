@@ -112,7 +112,7 @@ describe('DirectInvoiceService', () => {
       const invoice = service.convertOrderToInvoice(order);
 
       expect(invoice.docType).toBe(11); // Type C for monotributistas
-      expect(invoice.concept).toBe(1); // Products
+      expect(invoice.concept).toBe(2); // Services (allows wider date range)
       expect(invoice.currency).toBe('PES');
       expect(invoice.exchange).toBe(1);
       expect(invoice.netAmount).toBe(150001); // Rounded

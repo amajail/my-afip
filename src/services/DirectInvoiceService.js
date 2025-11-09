@@ -141,18 +141,18 @@ class DirectInvoiceService {
     const binanceDate = new Date(parseInt(binanceTimestamp));
     const today = new Date();
 
-    // Calculate 5 days ago from today (AFIP regulation limit for Services concept)
-    const fiveDaysAgo = new Date(today);
-    fiveDaysAgo.setDate(today.getDate() - 5);
+    // Calculate 10 days ago from today (AFIP regulation limit for Services concept)
+    const tenDaysAgo = new Date(today);
+    tenDaysAgo.setDate(today.getDate() - 10);
 
     // AFIP Invoice Date Rules for Services (Concept 2):
-    // - Use actual Binance order date if within last 5 days
-    // - Use exactly 5 days ago if Binance order is older (to stay within AFIP date range)
-    if (binanceDate >= fiveDaysAgo) {
+    // - Use actual Binance order date if within last 10 days
+    // - Use exactly 10 days ago if Binance order is older (to stay within AFIP date range)
+    if (binanceDate >= tenDaysAgo) {
       return binanceDate.toISOString().split('T')[0];
     }
 
-    return fiveDaysAgo.toISOString().split('T')[0];
+    return tenDaysAgo.toISOString().split('T')[0];
   }
 
   async close() {

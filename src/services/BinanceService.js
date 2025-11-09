@@ -14,6 +14,8 @@ const { ConfigValidator, DateValidator } = require('../utils/validators');
 class BinanceService {
   constructor(config) {
     this.config = config;
+    this.apiKey = config.apiKey;
+    this.secretKey = config.secretKey;
     this.baseURL = 'https://api.binance.com';
     this.initialized = false;
   }

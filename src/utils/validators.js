@@ -272,11 +272,11 @@ class DateValidator {
         fieldName: 'invoice date'
       });
     } else {
-      // Services: up to 5 days in the past
+      // Services: up to 10 days in the past (AFIP regulation)
       return this.validate(date, {
         allowPast: true,
         allowFuture: false,
-        maxDaysInPast: 5,
+        maxDaysInPast: 10,
         fieldName: 'invoice date'
       });
     }

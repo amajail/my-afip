@@ -17,6 +17,7 @@ class Invoice {
     this.dueDate = data.dueDate;
     this.taxes = data.taxes || [];
     this.associatedDocs = data.associatedDocs || [];
+    this.orderNumber = data.orderNumber; // Binance order number reference
   }
 
   validate() {
