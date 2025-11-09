@@ -3,13 +3,18 @@ const path = require('path');
 const fs = require('fs');
 
 class Database {
-  constructor() {
-    const dbDir = path.join(__dirname, '..', '..', 'data');
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
+  constructor(dbPath = null) {
+    if (dbPath) {
+      // Use provided path (for testing)
+      this.dbPath = dbPath;
+    } else {
+      // Use default production path
+      const dbDir = path.join(__dirname, '..', '..', 'data');
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+      this.dbPath = path.join(dbDir, 'afip-orders.db');
     }
-
-    this.dbPath = path.join(dbDir, 'afip-orders.db');
     this.db = null;
   }
 
