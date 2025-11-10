@@ -126,7 +126,7 @@ const result = await processWithRetry(
 
 Created:
   ✅ src/utils/errors.js (372 lines)
-  ✅ ERROR_HANDLING_IMPLEMENTATION.md (Complete documentation)
+  ✅ docs/development/error-handling.md (Complete documentation)
   
 Modified:
   ✅ src/services/AfipService.js
@@ -156,7 +156,7 @@ This is a complete, production-ready implementation. Recommend committing:
   git add src/services/AfipService.js
   git add src/services/BinanceService.js
   git add src/services/DirectInvoiceService.js
-  git add ERROR_HANDLING_IMPLEMENTATION.md
+  git add docs/development/error-handling.md
   git commit -m "feat: implement standardized error handling with retry logic
   
   - Add 16 custom error classes with codes and context

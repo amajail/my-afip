@@ -367,6 +367,55 @@ describe('Database Integration', () => {
   });
 
   describe('performance', () => {
-    // Performance test intentionally removed: environment-dependent and can cause CI flakes.
+    it('should handle bulk insertions efficiently', async () => {
+      const startTime = Date.now();
+      const orderCount = 1000;
+
+      // Prepare bulk insert
+      const stmt = await new Promise((resolve, reject) => {
+        const statement = db.db.prepare(`INSERT INTO orders (
+          order_number, amount, price, total_price, asset, fiat, trade_type, create_time, order_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        resolve(statement);
+      });
+
+      // Bulk insert
+      await new Promise((resolve, reject) => {
+        db.db.serialize(() => {
+          db.db.run('BEGIN TRANSACTION');
+
+          for (let i = 0; i < orderCount; i++) {
+            const order = MockFactory.createBinanceOrder({
+              order_number: `bulk_test_${i}`
+            });
+
+            stmt.run([
+              order.order_number, order.amount, order.price, order.total_price,
+              order.asset, order.fiat, order.trade_type, order.create_time, order.order_date
+            ]);
+          }
+
+          db.db.run('COMMIT', (err) => {
+            stmt.finalize();
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      });
+
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      // Verify all records were inserted
+      const count = await new Promise((resolve, reject) => {
+        db.db.get("SELECT COUNT(*) as count FROM orders WHERE order_number LIKE 'bulk_test_%'", [], (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        });
+      });
+
+      expect(count).toBe(orderCount);
+      expect(duration).toBeLessThan(30000); // Should complete within 30 seconds
+    });
   });
 });
