@@ -39,11 +39,11 @@ This document tracks the implementation of the layered architecture for supporti
 - [x] Write tests for error classes
 
 ### 1.3 Shared Layer - Logging
-- [ ] Create `src/shared/logging/Logger.js` (abstract logger interface)
-- [ ] Create `src/shared/logging/loggers/ConsoleLogger.js`
-- [ ] Create `src/shared/logging/loggers/ApplicationInsightsLogger.js`
-- [ ] Create `src/shared/logging/LoggerFactory.js` (logger creation)
-- [ ] Move existing logger to shared layer
+- [x] Create `src/shared/logging/Logger.js` (abstract logger interface)
+- [x] Create `src/shared/logging/loggers/ConsoleLogger.js`
+- [x] Create `src/shared/logging/loggers/ApplicationInsightsLogger.js`
+- [x] Create `src/shared/logging/LoggerFactory.js` (logger creation)
+- [x] Move existing logger to shared layer
 - [ ] Write tests for logging
 
 ### 1.4 Shared Layer - Validation & Utils

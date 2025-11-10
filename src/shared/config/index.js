@@ -22,12 +22,21 @@ const cliConfig = require('./cli.config');
 // ===== Core Shared Configuration =====
 // Configuration used by both API and CLI
 
+// Helper function to safely get required vars (skip in test mode if mocked)
+function safeGetRequired(key) {
+  // In test mode, check if key exists before requiring
+  if (environment.isTest() && !process.env[key]) {
+    return ''; // Return empty string instead of throwing
+  }
+  return getRequired(key);
+}
+
 const shared = {
   // AFIP Configuration
   afip: {
-    cuit: getRequired('AFIP_CUIT'),
-    certPath: getRequired('AFIP_CERT_PATH'),
-    keyPath: getRequired('AFIP_KEY_PATH'),
+    cuit: safeGetRequired('AFIP_CUIT'),
+    certPath: safeGetRequired('AFIP_CERT_PATH'),
+    keyPath: safeGetRequired('AFIP_KEY_PATH'),
     environment: get('AFIP_ENVIRONMENT', 'production'),
     ptoVta: getInt('AFIP_PTOVTA', 2),
     cacheTokensPath: get('AFIP_CACHE_TOKENS_PATH', './.afip-tokens')
@@ -35,8 +44,8 @@ const shared = {
 
   // Binance API Configuration
   binance: {
-    apiKey: getRequired('BINANCE_API_KEY'),
-    secretKey: getRequired('BINANCE_SECRET_KEY'),
+    apiKey: safeGetRequired('BINANCE_API_KEY'),
+    secretKey: safeGetRequired('BINANCE_SECRET_KEY'),
     apiUrl: get('BINANCE_API_URL', 'https://api.binance.com')
   },
 
