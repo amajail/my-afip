@@ -47,11 +47,11 @@ This document tracks the implementation of the layered architecture for supporti
 - [ ] Write tests for logging
 
 ### 1.4 Shared Layer - Validation & Utils
-- [ ] Move validators to `src/shared/validation/validators.js`
-- [ ] Create `src/shared/utils/date.utils.js`
-- [ ] Create `src/shared/utils/format.utils.js`
-- [ ] Create `src/shared/utils/currency.utils.js`
-- [ ] Write tests for utilities
+- [x] Move validators to `src/shared/validation/validators.js`
+- [x] Create `src/shared/utils/date.utils.js`
+- [x] Create `src/shared/utils/format.utils.js`
+- [x] Create `src/shared/utils/currency.utils.js`
+- [x] Write tests for utilities (198 tests added)
 
 ### 1.5 Domain Layer - Value Objects
 - [ ] Create `src/domain/value-objects/Money.js`
