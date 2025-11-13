@@ -192,12 +192,34 @@ src/
 5. **Type Safety**: Clear interfaces and contracts
 6. **Domain Focus**: Business rules protected and centralized
 
+### ✅ Phase 6: CLI Layer Refactoring (Complete)
+
+**Files Created:** 9 files + 2 modified
+- **Formatters (3):** ConsoleFormatter, TableFormatter, ReportFormatter
+- **Commands (3):** BinanceCommand, ReportCommand, ProcessCommand
+- **Router:** CLI class with command routing
+- **Tests:** All 25 existing tests passing
+
+**Key Features:**
+- Clean separation of presentation logic
+- Consistent formatting across all commands
+- ASCII table generation for reports
+- Enhanced help system with examples
+- New commands: `report-stats`, `binance-test`, `mark-manual`
+- Backward compatible with existing commands
+
+**Architecture Benefits:**
+- Single Responsibility: Each formatter/command has one purpose
+- Open/Closed: Easy to add new commands without modifying existing code
+- Dependency Inversion: CLI depends on AfipInvoiceApp abstraction
+- Reusability: Formatters shared across commands
+- Testability: Clear separation enables easy testing
+
 ## Next Phases (Not Implemented)
 
 - Phase 3.2: Infrastructure implementations (repositories, gateways)
 - Phase 4: Application Layer (use cases)
 - Phase 5: API Layer (Azure Functions)
-- Phase 6: CLI Layer refactoring
 - Phase 7: Integration & Deployment
 
 ## Conclusion
