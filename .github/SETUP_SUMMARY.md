@@ -6,7 +6,7 @@ Your repository now has a complete PR policy that enforces:
 
 ### 1. **Automated GitHub Actions Workflow** (`.github/workflows/pr-checks.yml`)
    - Runs on every PR and push to main/develop branches
-   - Tests across Node.js versions: 16.x, 18.x, 20.x
+   - Tests across Node.js versions: 18.x, 20.x (LTS)
    - Validates:
      - ✅ Build succeeds
      - ✅ All unit tests pass
@@ -38,7 +38,6 @@ git push origin main
 4. Enable:
    - ✅ Require a pull request before merging
    - ✅ Require status checks to pass:
-     - `build-and-test (16.x)`
      - `build-and-test (18.x)`
      - `build-and-test (20.x)`
      - `code-quality`

@@ -17,7 +17,7 @@ The automated workflow is defined in `.github/workflows/pr-checks.yml` and runs 
 ### Workflow Steps
 
 1. **Checkout Code** - Fetch the repository
-2. **Setup Node.js** - Tests run on Node 16.x, 18.x, and 20.x
+2. **Setup Node.js** - Tests run on Node 18.x and 20.x (LTS versions)
 3. **Install Dependencies** - `npm ci` for clean installations
 4. **Lint Check** - Optional linting (if available)
 5. **Build Check** - Verify the project builds (`npm run build`)
