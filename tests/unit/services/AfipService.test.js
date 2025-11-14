@@ -19,11 +19,18 @@ jest.mock('../../../src/utils/validators', () => ({
   }
 }));
 
+// Mock fs module
+jest.mock('fs');
+
 describe('AfipService', () => {
   let service;
   let mockAfipSDK;
 
   beforeEach(() => {
+    // Mock fs.existsSync to always return true (files exist)
+    const fs = require('fs');
+    fs.existsSync = jest.fn(() => true);
+
     mockAfipSDK = {
       createBill: jest.fn(),
       createInvoice: jest.fn(), // Added for tests that use createInvoice

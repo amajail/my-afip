@@ -168,6 +168,16 @@ src/
 │   └── events/
 │       ├── InvoiceCreated.js
 │       └── OrderProcessed.js
+├── infrastructure/           # Adapters (implementing ports)
+│   ├── repositories/
+│   │   ├── SQLiteOrderRepository.js
+│   │   ├── SQLiteInvoiceRepository.js
+│   │   └── index.js
+│   ├── gateways/
+│   │   ├── AfipGatewayAdapter.js
+│   │   ├── BinanceGatewayAdapter.js
+│   │   └── index.js
+│   └── index.js
 ├── shared/                   # Cross-cutting concerns
 │   ├── config/
 │   ├── errors/
@@ -182,6 +192,8 @@ src/
 2. `7dd9e29` - Phase 1.6: Domain entities
 3. `0edaf9d` - Phase 2: Domain services and events
 4. `e709999` - Phase 3.1: Application interfaces (ports)
+5. `9113cd4` - Phase 3.2: Repository layer (partial)
+6. `490e246` - Phase 3.2: Gateway layer (complete infrastructure)
 
 ## Benefits Achieved
 
@@ -215,12 +227,54 @@ src/
 - Reusability: Formatters shared across commands
 - Testability: Clear separation enables easy testing
 
+### ✅ Phase 3.2: Infrastructure Layer Implementation (Complete)
+
+**Files Created:** 7 files (~1,200 lines)
+- **Repositories (2):** SQLiteOrderRepository, SQLiteInvoiceRepository
+- **Gateways (2):** AfipGatewayAdapter, BinanceGatewayAdapter
+- **Exports:** Infrastructure index with all implementations
+
+**Repository Implementations:**
+- SQLiteOrderRepository (309 lines) - IOrderRepository implementation
+  - 9 methods: save, find, update, delete, count, saveMany
+  - Entity ↔ Database conversion
+  - Comprehensive error handling
+
+- SQLiteInvoiceRepository (218 lines) - IInvoiceRepository implementation
+  - 7 methods: save, findByCAE, findByOrderNumber, findByDateRange, etc.
+  - Success/failure tracking
+  - CAE and processing method storage
+
+**Gateway Implementations:**
+- AfipGatewayAdapter (217 lines) - IAfipGateway implementation
+  - Wraps AfipService
+  - Converts to domain entities (InvoiceResult, CAE)
+  - Methods: createInvoice, queryInvoice, getLastInvoiceNumber, testConnection, getServerStatus
+
+- BinanceGatewayAdapter (256 lines) - IBinanceGateway implementation
+  - Wraps BinanceService
+  - Converts API responses to Order entities
+  - Methods: fetchOrders, getOrder, testConnection, getAccountStatus
+
+**Architecture Benefits:**
+- Dependency Inversion: Application depends on interfaces, infrastructure implements
+- Adapter Pattern: Gateways wrap external services
+- Repository Pattern: Abstract data persistence
+- Domain Purity: NO infrastructure dependencies in domain layer
+- Flexibility: Easy to swap database or external services
+- Testability: Easy to mock repositories and gateways
+
+**Documentation:**
+- Created INFRASTRUCTURE_IMPLEMENTATION.md with comprehensive details
+- Usage examples and testing strategy
+- Architecture diagrams
+
 ## Next Phases (Not Implemented)
 
-- Phase 3.2: Infrastructure implementations (repositories, gateways)
 - Phase 4: Application Layer (use cases)
 - Phase 5: API Layer (Azure Functions)
 - Phase 7: Integration & Deployment
+- Tests for Phase 3.2 infrastructure (pending)
 
 ## Conclusion
 
