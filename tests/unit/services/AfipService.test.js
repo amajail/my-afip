@@ -1,17 +1,10 @@
 const AfipService = require('../../../src/services/AfipService');
 const MockFactory = require('../../helpers/mock-factory');
 const AssertionHelpers = require('../../helpers/assertion-helpers');
-const fs = require('fs');
 
 // Mock facturajs
 jest.mock('facturajs', () => ({
   AfipServices: jest.fn()
-}));
-
-// Mock fs to avoid file system checks in tests
-jest.mock('fs', () => ({
-  existsSync: jest.fn(() => true), // Mock all files as existing
-  ...jest.requireActual('fs')
 }));
 
 // Mock validators to avoid validation issues in tests
@@ -26,11 +19,18 @@ jest.mock('../../../src/utils/validators', () => ({
   }
 }));
 
+// Mock fs module
+jest.mock('fs');
+
 describe('AfipService', () => {
   let service;
   let mockAfipSDK;
 
   beforeEach(() => {
+    // Mock fs.existsSync to always return true (files exist)
+    const fs = require('fs');
+    fs.existsSync = jest.fn(() => true);
+
     mockAfipSDK = {
       createBill: jest.fn(),
       createInvoice: jest.fn(), // Added for tests that use createInvoice
