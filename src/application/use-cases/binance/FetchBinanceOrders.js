@@ -6,7 +6,6 @@
  */
 
 const UseCase = require('../UseCase');
-const Order = require('../../../domain/entities/Order');
 const logger = require('../../../utils/logger');
 
 /**
@@ -71,7 +70,7 @@ class FetchBinanceOrders extends UseCase {
 
     try {
       // Fetch orders from Binance
-      const binanceOrders = await this.binanceGateway.fetchOrders(days, tradeType);
+      const binanceOrders = await this.binanceGateway.fetchOrders({ days, tradeType });
 
       logger.info(`Fetched ${binanceOrders.length} orders from Binance`);
 
@@ -83,8 +82,8 @@ class FetchBinanceOrders extends UseCase {
         };
       }
 
-      // Convert to domain Order entities
-      const orders = binanceOrders.map(binanceOrder => new Order(binanceOrder));
+      // Gateway already returns domain Order entities, no conversion needed
+      const orders = binanceOrders;
 
       // Filter out orders that already exist
       const newOrders = await this._filterNewOrders(orders);

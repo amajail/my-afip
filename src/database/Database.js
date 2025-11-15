@@ -277,6 +277,23 @@ class Database {
     });
   }
 
+  async getOrderByNumber(orderNumber) {
+    const sql = `
+      SELECT * FROM orders
+      WHERE order_number = ?
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [orderNumber], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
   async getSuccessfullyProcessedOrders() {
     const sql = `
       SELECT order_number, processed_at, processing_method, success, cae, voucher_number, error_message
