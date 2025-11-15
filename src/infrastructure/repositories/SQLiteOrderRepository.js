@@ -300,7 +300,7 @@ class SQLiteOrderRepository extends IOrderRepository {
       createTime: row.create_time,
       processedAt: row.processed_at,
       processingMethod: row.processing_method,
-      success: row.success === 1 || row.success === true,
+      success: row.success === null ? null : (row.success === 1 || row.success === true),
       cae: row.cae,
       voucherNumber: row.voucher_number,
       invoiceDate: row.invoice_date,

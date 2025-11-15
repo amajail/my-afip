@@ -341,7 +341,7 @@ class Database {
   async getUnprocessedOrders() {
     const sql = `
       SELECT * FROM orders
-      WHERE processed_at IS NULL OR (processed_at IS NOT NULL AND success = 0)
+      WHERE processed_at IS NULL OR success IS NULL OR success = 0
       ORDER BY create_time ASC
     `;
 

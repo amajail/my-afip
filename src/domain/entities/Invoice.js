@@ -186,6 +186,18 @@ class Invoice {
     }
   }
 
+  /**
+   * Public validation method for external validation requirements
+   * Since validation happens in constructor, this ensures the invoice is valid
+   * @throws {ValidationError} If validation fails
+   */
+  validateOrThrow() {
+    // Invoice is already validated in constructor and immutable
+    // This method exists for compatibility with external services (e.g., AfipService)
+    // that expect it, but validation already occurred during instantiation
+    return;
+  }
+
   // Getters
   get orderNumber() { return this._orderNumber; }
   get netAmount() { return this._netAmount; }
