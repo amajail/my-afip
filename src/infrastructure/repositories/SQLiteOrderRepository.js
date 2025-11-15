@@ -271,9 +271,12 @@ class SQLiteOrderRepository extends IOrderRepository {
       sellerNickname: order.sellerNickname,
       tradeType: order.tradeType,
       createTime: order.createTime,
-      processingStatus: order.processingStatus,
+      processedAt: order.processedAt,
       processingMethod: order.processingMethod,
+      success: order.success,
       cae: order.cae ? order.cae.value : null,
+      voucherNumber: order.voucherNumber,
+      invoiceDate: order.invoiceDate,
       errorMessage: order.errorMessage
     };
   }
@@ -295,9 +298,12 @@ class SQLiteOrderRepository extends IOrderRepository {
       sellerNickname: row.seller_nickname,
       tradeType: row.trade_type,
       createTime: row.create_time,
-      processingStatus: row.processing_status,
+      processedAt: row.processed_at,
       processingMethod: row.processing_method,
+      success: row.success === 1 || row.success === true,
       cae: row.cae,
+      voucherNumber: row.voucher_number,
+      invoiceDate: row.invoice_date,
       errorMessage: row.error_message
     });
   }
