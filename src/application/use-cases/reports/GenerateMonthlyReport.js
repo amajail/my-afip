@@ -185,15 +185,17 @@ class GenerateMonthlyReport extends UseCase {
   _formatOrderDetails(orders) {
     return orders.map(order => ({
       orderNumber: order.orderNumber.value,
-      date: order.orderDate,
+      orderDate: order.orderDate,
       tradeType: order.tradeType,
-      amount: order.totalAmount.format(),
+      totalPrice: order.totalAmount.amount,
+      fiat: order.totalAmount.currency,
       asset: order.asset,
-      status: order.isProcessed()
+      processing_status: order.isProcessed()
         ? (order.isSuccessful() ? 'success' : 'failed')
         : 'pending',
       cae: order.cae || null,
-      errorMessage: order.errorMessage || null
+      error_message: order.errorMessage || null,
+      processing_method: order.processingMethod || null
     }));
   }
 

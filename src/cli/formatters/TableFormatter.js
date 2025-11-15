@@ -120,8 +120,10 @@ class TableFormatter {
    * @private
    */
   static _truncate(str, maxLength) {
-    if (str.length <= maxLength) return str;
-    return str.substring(0, maxLength - 3) + '...';
+    // Ensure str is a string
+    const strValue = String(str || '');
+    if (strValue.length <= maxLength) return strValue;
+    return strValue.substring(0, maxLength - 3) + '...';
   }
 }
 

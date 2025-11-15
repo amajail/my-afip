@@ -110,18 +110,26 @@ class SQLiteOrderRepository extends IOrderRepository {
   async findByDateRange(startDate, endDate) {
     await this.initialize();
 
-    try {
-      const rows = await this.db.getOrdersByDateRange(startDate, endDate);
-      return rows.map(row => this._fromDatabase(row));
-    } catch (error) {
-      logger.error('Failed to find orders by date range', {
-        startDate,
-        endDate,
-        error: error.message,
-        event: 'orders_date_range_find_failed'
+    const sql = `SELECT * FROM orders
+                 WHERE order_date >= ? AND order_date <= ?
+                 ORDER BY order_date DESC`;
+
+    return new Promise((resolve, reject) => {
+      this.db.db.all(sql, [startDate, endDate], (err, rows) => {
+        if (err) {
+          logger.error('Failed to find orders by date range', {
+            startDate,
+            endDate,
+            error: err.message,
+            event: 'orders_date_range_find_failed'
+          });
+          resolve([]); // Return empty array on error
+        } else {
+          const orders = rows.map(row => this._fromDatabase(row));
+          resolve(orders);
+        }
       });
-      return [];
-    }
+    });
   }
 
   /**
@@ -302,6 +310,13 @@ class SQLiteOrderRepository extends IOrderRepository {
       await this.db.close();
       this.initialized = false;
     }
+  }
+
+  /**
+   * Cleanup resources (alias for close)
+   */
+  async cleanup() {
+    return this.close();
   }
 }
 

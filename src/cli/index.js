@@ -185,7 +185,7 @@ class CLI {
 
     ConsoleFormatter.subheader('Processing Commands');
     ConsoleFormatter.listItem('process                       Process all unprocessed orders');
-    ConsoleFormatter.listItem('process <order-number>        Process specific order (not yet implemented)');
+    ConsoleFormatter.listItem('process <order-number>        Process specific order by number');
     ConsoleFormatter.listItem('mark-manual <order> <cae>     Mark order as manually processed');
     ConsoleFormatter.newLine();
 
