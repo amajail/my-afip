@@ -3,8 +3,11 @@
  *
  * CLI command handler for report generation
  * Part of Presentation Layer (CLI)
+ *
+ * Updated to use Application Layer use cases following Clean Architecture
  */
 
+const container = require('../../application/di/container');
 const DatabaseOrderTracker = require('../../utils/DatabaseOrderTracker');
 const ConsoleFormatter = require('../formatters/ConsoleFormatter');
 const ReportFormatter = require('../formatters/ReportFormatter');
@@ -15,25 +18,40 @@ class ReportCommand {
    * Show current month invoice report
    */
   static async showMonthlyReport() {
-    const dbTracker = new DatabaseOrderTracker();
-
     try {
-      await dbTracker.initialize();
+      // Initialize container
+      await container.initialize();
 
-      // Fetch data
-      const stats = await dbTracker.getCurrentMonthStats();
-      const orders = await dbTracker.getCurrentMonthOrders();
+      // Get use case from DI container
+      const generateMonthlyReportUseCase = container.getGenerateMonthlyReportUseCase();
 
-      // Transform database data to report format
-      const reportData = this._transformReportData(stats, orders);
+      // Execute use case
+      const report = await generateMonthlyReportUseCase.execute();
+
+      // Transform to format expected by ReportFormatter
+      const reportData = {
+        stats: {
+          totalOrders: report.stats.totalOrders,
+          successfulOrders: report.stats.successfulInvoices,
+          failedOrders: report.stats.failedInvoices,
+          pendingOrders: report.stats.pendingOrders,
+          totalAmount: report.stats.totalAmount,
+          averageAmount: report.stats.averageAmount,
+          byProcessingMethod: {
+            automatic: report.stats.successfulInvoices, // All from use case are automatic
+            manual: 0
+          }
+        },
+        orders: report.orders
+      };
 
       // Format and display report
       ReportFormatter.formatMonthlyReport(reportData);
 
       // Log for debugging/tracking
       logger.info('Monthly report generated', {
-        totalOrders: reportData.stats.totalOrders,
-        successfulOrders: reportData.stats.successfulOrders,
+        totalOrders: report.stats.totalOrders,
+        successfulOrders: report.stats.successfulInvoices,
         event: 'monthly_report_generated'
       });
     } catch (error) {
@@ -43,7 +61,7 @@ class ReportCommand {
         event: 'report_generation_failed'
       });
     } finally {
-      await dbTracker.close();
+      await container.cleanup();
     }
   }
 
