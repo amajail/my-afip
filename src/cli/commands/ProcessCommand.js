@@ -132,10 +132,13 @@ class ProcessCommand {
    * @param {string} orderNumber - Order number
    * @param {string} cae - CAE number
    */
-  static async markOrderAsManual(orderNumber, cae) {
+  static async markOrderAsManual(orderNumber, cae, voucherNumber = null) {
     ConsoleFormatter.header('Mark Order as Manually Processed');
     ConsoleFormatter.keyValue('Order Number', orderNumber);
     ConsoleFormatter.keyValue('CAE', cae);
+    if (voucherNumber) {
+      ConsoleFormatter.keyValue('Voucher Number', voucherNumber);
+    }
     ConsoleFormatter.newLine();
 
     const DatabaseOrderTracker = require('../../utils/DatabaseOrderTracker');
@@ -145,13 +148,14 @@ class ProcessCommand {
       await dbTracker.initialize();
 
       ConsoleFormatter.progress('Marking order as manual');
-      const result = await dbTracker.markManualInvoice(orderNumber, cae);
+      const result = await dbTracker.markManualInvoice(orderNumber, cae, voucherNumber);
 
       if (result) {
         ConsoleFormatter.success(`Order ${orderNumber} marked as manually processed`);
         logger.info('Order marked as manual', {
           orderNumber,
           cae,
+          voucherNumber,
           event: 'order_marked_manual'
         });
       } else {
