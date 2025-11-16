@@ -114,9 +114,13 @@ class CreateInvoice extends UseCase {
 
       // 6. Update order with result
       const updatedOrder = order.markAsProcessed(
-        result.isSuccessful(),
-        result.isSuccessful() ? result.cae.value : null,
-        result.isSuccessful() ? null : result.errorMessage,
+        {
+          success: result.isSuccessful(),
+          cae: result.isSuccessful() ? result.cae.value : null,
+          voucherNumber: result.voucherNumber,
+          invoiceDate: result.invoiceDate,
+          errorMessage: result.isSuccessful() ? null : result.errorMessage
+        },
         'automatic'
       );
 
