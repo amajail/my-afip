@@ -307,6 +307,16 @@ class Invoice {
   }
 
   /**
+   * Alias for toAFIPFormat for compatibility with AfipService
+   * Uses default point of sale from config
+   * @returns {Object} Invoice in AFIP format
+   */
+  toAfipFormat() {
+    const config = require('../../config');
+    return this.toAFIPFormat(config.afip.ptoVta);
+  }
+
+  /**
    * Format date for AFIP (YYYYMMDD)
    * @param {string} dateStr - Date in YYYY-MM-DD format
    * @returns {string} Date in YYYYMMDD format

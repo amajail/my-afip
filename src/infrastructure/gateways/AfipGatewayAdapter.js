@@ -56,7 +56,9 @@ class AfipGatewayAdapter extends IAfipGateway {
 
       // Convert service result to domain InvoiceResult
       if (result.success) {
-        const cae = CAE.of(result.cae, result.caeExpiration);
+        // Convert AFIP date format (YYYYMMDD) to ISO string
+        const caeExpiration = this._convertAfipDate(result.caeExpiration);
+        const cae = CAE.of(result.cae, caeExpiration);
 
         return InvoiceResult.success(
           cae,
@@ -212,6 +214,22 @@ class AfipGatewayAdapter extends IAfipGateway {
         timestamp: new Date().toISOString()
       };
     }
+  }
+
+  /**
+   * Convert AFIP date format (YYYYMMDD) to ISO string (YYYY-MM-DD)
+   * @param {string} afipDate - Date in YYYYMMDD format
+   * @returns {string} Date in YYYY-MM-DD format
+   * @private
+   */
+  _convertAfipDate(afipDate) {
+    if (!afipDate || afipDate.length !== 8) {
+      return null;
+    }
+    const year = afipDate.substring(0, 4);
+    const month = afipDate.substring(4, 6);
+    const day = afipDate.substring(6, 8);
+    return `${year}-${month}-${day}`;
   }
 }
 
