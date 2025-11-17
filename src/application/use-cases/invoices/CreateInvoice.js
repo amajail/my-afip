@@ -144,19 +144,38 @@ class CreateInvoice extends UseCase {
       };
 
     } catch (error) {
-      logger.error('Failed to create invoice', {
-        error: error.message,
-        orderNumber
-      });
+      // Check if this is an AFIP "already exists" error (error code 10016)
+      const isAlreadyProcessedError = error.code === 10016 ||
+        error.message?.includes('no se corresponde con el proximo a autorizar');
+
+      if (isAlreadyProcessedError) {
+        logger.warn('Order may already have an invoice in AFIP', {
+          error: error.message,
+          orderNumber,
+          suggestion: 'Check AFIP portal and use mark-manual command to sync database',
+          event: 'possible_duplicate_invoice'
+        });
+      } else {
+        logger.error('Failed to create invoice', {
+          error: error.message,
+          orderNumber
+        });
+      }
 
       // Mark order as failed if it exists
       try {
         const order = await this.orderRepository.findByOrderNumber(orderNumber);
         if (order && !order.isProcessed()) {
           const failedOrder = order.markAsProcessed(
-            false,
-            null,
-            error.message,
+            {
+              success: false,
+              cae: null,
+              voucherNumber: null,
+              invoiceDate: null,
+              errorMessage: isAlreadyProcessedError
+                ? `AFIP sync issue: ${error.message}. Check AFIP portal and use mark-manual command.`
+                : error.message
+            },
             'automatic'
           );
           await this.orderRepository.update(failedOrder);

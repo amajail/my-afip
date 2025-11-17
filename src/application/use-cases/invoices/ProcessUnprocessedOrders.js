@@ -100,6 +100,18 @@ class ProcessUnprocessedOrders extends UseCase {
         ? eligibleOrders.slice(0, limit)
         : eligibleOrders;
 
+      // 5. Log orders that will be processed for visibility
+      logger.info('Orders to be processed:', {
+        count: ordersToProcess.length,
+        orders: ordersToProcess.map(o => ({
+          orderNumber: o.orderNumber.value,
+          orderDate: o.orderDate,
+          amount: o.totalAmount.format(),
+          currentStatus: o.isProcessed() ? 'processed' : 'unprocessed'
+        })),
+        event: 'processing_preview'
+      });
+
       // 5. Process each order
       const results = [];
       let successCount = 0;
