@@ -58,20 +58,24 @@ class AfipGatewayAdapter extends IAfipGateway {
       if (result.success) {
         // Convert AFIP date format (YYYYMMDD) to ISO string
         const caeExpiration = this._convertAfipDate(result.caeExpiration);
-        const cae = CAE.of(result.cae, caeExpiration);
 
-        return InvoiceResult.success(
-          cae,
-          result.voucherNumber,
-          invoice,
-          result.result // rawResponse
-        );
+        return InvoiceResult.success({
+          cae: result.cae,
+          caeExpiration: caeExpiration,
+          voucherNumber: result.voucherNumber,
+          invoiceDate: invoice.invoiceDate, // Use invoice date from original invoice
+          observations: [],
+          metadata: {
+            rawResponse: result.result
+          }
+        });
       } else {
         return InvoiceResult.failure(
           result.error,
-          invoice,
-          result.errorCode,
-          result.invoice // rawResponse
+          {
+            errorCode: result.errorCode,
+            rawResponse: result.invoice
+          }
         );
       }
     } catch (error) {
@@ -82,8 +86,10 @@ class AfipGatewayAdapter extends IAfipGateway {
 
       return InvoiceResult.failure(
         error.message,
-        invoice,
-        error.code || 'AFIP_GATEWAY_ERROR'
+        {
+          errorCode: error.code || 'AFIP_GATEWAY_ERROR',
+          invoice: invoice.toJSON()
+        }
       );
     }
   }
