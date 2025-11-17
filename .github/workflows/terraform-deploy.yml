@@ -1,0 +1,586 @@
+name: Terraform Infrastructure Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-deploy.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to (dev/staging/prod)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      action:
+        description: 'Terraform action (plan/apply/destroy)'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  TERRAFORM_VERSION: 1.5.0
+  WORKING_DIR: ./terraform
+
+jobs:
+  # Stage 1: Validate Terraform Configuration
+  terraform-validate:
+    name: Terraform Validate & Format Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Terraform Format Check
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform fmt -check -recursive -diff
+        continue-on-error: false
+      
+      - name: Terraform Init (for validation)
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init -backend=false
+        env:
+          TF_IN_AUTOMATION: true
+      
+      - name: Terraform Validate
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform validate
+      
+      - name: TFLint - Run Terraform Linter
+        uses: terraform-linters/setup-tflint@v3
+        with:
+          tflint_version: latest
+      
+      - name: TFLint Configuration
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          tflint --init
+      
+      - name: TFLint Run
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          tflint -f compact
+        continue-on-error: true
+
+  # Stage 2: Security Scanning
+  security-scan:
+    name: Security Scan with tfsec
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: ${{ env.WORKING_DIR }}
+          format: sarif
+          out_dir: .
+        continue-on-error: true
+      
+      - name: Upload security results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: terraform.sarif
+          wait-for-processing: true
+
+  # Stage 3: Plan for Dev/Staging
+  terraform-plan-dev:
+    name: Terraform Plan - Dev
+    needs: [terraform-validate, security-scan]
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request' && github.base_ref == 'develop') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    
+    outputs:
+      plan_summary: ${{ steps.plan.outputs.stdout }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init - Dev
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_STATE_RG_DEV }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_DEV }}" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY_DEV }}"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Terraform Plan - Dev
+        id: plan
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform plan \
+            -var-file="terraform.dev.tfvars" \
+            -out=tfplan.dev
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_afip_cuit: ${{ secrets.AFIP_CUIT }}
+          TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+          TF_VAR_binance_secret_key: ${{ secrets.BINANCE_SECRET_KEY }}
+      
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-dev
+          path: ${{ env.WORKING_DIR }}/tfplan.dev
+          retention-days: 5
+      
+      - name: Comment PR with Plan
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const { exec } = require('child_process');
+            const util = require('util');
+            const execPromise = util.promisify(exec);
+            
+            try {
+              const { stdout } = await execPromise('cd ${{ env.WORKING_DIR }} && terraform show -no-color tfplan.dev | head -100');
+              
+              const comment = `## 📋 Terraform Plan - Dev Environment
+            
+            \`\`\`
+            ${stdout}
+            \`\`\`
+            
+            ✅ Plan generated successfully. Review changes before merging.`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Could not post plan comment:', error);
+            }
+
+  # Stage 4: Plan for Staging/Prod
+  terraform-plan-staging:
+    name: Terraform Plan - Staging
+    needs: [terraform-validate, security-scan]
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init - Staging
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_STATE_RG_STAGING }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_STAGING }}" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY_STAGING }}"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Terraform Plan - Staging
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform plan \
+            -var-file="terraform.staging.tfvars" \
+            -out=tfplan.staging
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_afip_cuit: ${{ secrets.AFIP_CUIT }}
+          TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+          TF_VAR_binance_secret_key: ${{ secrets.BINANCE_SECRET_KEY }}
+      
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-staging
+          path: ${{ env.WORKING_DIR }}/tfplan.staging
+          retention-days: 5
+
+  terraform-plan-prod:
+    name: Terraform Plan - Production
+    needs: [terraform-validate, security-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init - Production
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_STATE_RG_PROD }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_PROD }}" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY_PROD }}"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Terraform Plan - Production
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform plan \
+            -var-file="terraform.prod.tfvars" \
+            -out=tfplan.prod
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_afip_cuit: ${{ secrets.AFIP_CUIT }}
+          TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+          TF_VAR_binance_secret_key: ${{ secrets.BINANCE_SECRET_KEY }}
+      
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-prod
+          path: ${{ env.WORKING_DIR }}/tfplan.prod
+          retention-days: 5
+
+  # Stage 5: Apply for Dev (Auto-apply on merge)
+  terraform-apply-dev:
+    name: Terraform Apply - Dev
+    needs: terraform-plan-dev
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: development
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init - Dev
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_STATE_RG_DEV }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_DEV }}" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY_DEV }}"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan-dev
+          path: ${{ env.WORKING_DIR }}
+      
+      - name: Terraform Apply - Dev
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform apply -auto-approve tfplan.dev
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Get Terraform Outputs
+        id: tf_outputs
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          echo "resource_group=$(terraform output -raw resource_group_name)" >> $GITHUB_OUTPUT
+          echo "function_app=$(terraform output -raw function_app_name)" >> $GITHUB_OUTPUT
+          echo "storage_account=$(terraform output -raw storage_account_name)" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Post Deployment Summary
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Dev Infrastructure Deployed Successfully**
+              
+              📊 Resources Created:
+              - Resource Group: ${{ steps.tf_outputs.outputs.resource_group }}
+              - Function App: ${{ steps.tf_outputs.outputs.function_app }}
+              - Storage Account: ${{ steps.tf_outputs.outputs.storage_account }}
+              
+              Next: Deploy application code to Function App`
+            });
+
+  # Stage 6: Apply for Staging (Requires approval)
+  terraform-apply-staging:
+    name: Terraform Apply - Staging
+    needs: terraform-plan-staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      # Requires manual approval
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init - Staging
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_STATE_RG_STAGING }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_STAGING }}" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY_STAGING }}"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan-staging
+          path: ${{ env.WORKING_DIR }}
+      
+      - name: Terraform Apply - Staging
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform apply -auto-approve tfplan.staging
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+  # Stage 7: Apply for Production (Requires approval + manual trigger)
+  terraform-apply-prod:
+    name: Terraform Apply - Production
+    needs: terraform-plan-prod
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply' && github.event.inputs.environment == 'prod'
+    environment:
+      name: production
+      # Requires manual approval
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Terraform Init - Production
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_STATE_RG_PROD }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_PROD }}" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TF_STATE_KEY_PROD }}"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan-prod
+          path: ${{ env.WORKING_DIR }}
+      
+      - name: Terraform Apply - Production
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform apply -auto-approve tfplan.prod
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+  # Stage 8: Destroy (Requires approval + manual trigger)
+  terraform-destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      # Requires manual approval
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Determine Backend Config
+        id: backend
+        run: |
+          ENV=${{ github.event.inputs.environment }}
+          echo "rg=$(eval echo \${{ secrets.TF_STATE_RG_${ENV} }})::RG" | sed 's/.*RG//'
+      
+      - name: Terraform Init
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          ENV="${{ github.event.inputs.environment }}"
+          terraform init \
+            -backend-config="resource_group_name=$(eval echo \${{ secrets.TF_STATE_RG_${ENV} }})" \
+            -backend-config="storage_account_name=$(eval echo \${{ secrets.TF_STATE_STORAGE_${ENV} }})" \
+            -backend-config="container_name=${{ secrets.TF_STATE_CONTAINER }}" \
+            -backend-config="key=$(eval echo \${{ secrets.TF_STATE_KEY_${ENV} }})"
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      
+      - name: Terraform Destroy
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          terraform destroy \
+            -var-file="terraform.${{ github.event.inputs.environment }}.tfvars" \
+            -auto-approve
+        env:
+          TF_IN_AUTOMATION: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_afip_cuit: ${{ secrets.AFIP_CUIT }}
+          TF_VAR_binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+          TF_VAR_binance_secret_key: ${{ secrets.BINANCE_SECRET_KEY }}
