@@ -1,0 +1,16 @@
+# Example local tfvars for DEV (DO NOT COMMIT secrets)
+# Copy to terraform/terraform.dev.local.tfvars and fill values when working locally.
+
+# Sensitive values - provide via env or this local tfvars (gitignored)
+afip_cuit            = "<AFIP_CUIT>"
+binance_api_key      = "<BINANCE_API_KEY>"
+binance_secret_key   = "<BINANCE_SECRET_KEY>"
+
+# If you prefer environment variables instead of a local tfvars:
+# export TF_VAR_afip_cuit="..."
+# export TF_VAR_binance_api_key="..."
+# export TF_VAR_binance_secret_key="..."
+
+# Non-sensitive overrides for local dev (optional)
+# location = "eastus"
+# node_version = "18"

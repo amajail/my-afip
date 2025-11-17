@@ -1,0 +1,7 @@
+# Auto-generated backend configuration for dev environment
+# Generated on: Mon Nov 17 17:24:11 UTC 2025
+
+resource_group_name  = "afip-tfstate-rg-dev"
+storage_account_name = "afiptfstatedev"
+container_name       = "tfstate"
+key                  = "afip-invoice-dev.tfstate"

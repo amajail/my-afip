@@ -1,0 +1,54 @@
+# Terraform Ignore File
+# Excludes files and directories from Terraform operations
+
+# Local state files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files (local overrides)
+.env
+.env.local
+*.tfvars
+!terraform.dev.tfvars
+!terraform.staging.tfvars
+!terraform.prod.tfvars
+
+# Backup files
+*.bak
+*.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude override files as they are local to workspace
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include override files you do wish to add to version control
+# !example_override.tf
+
+# Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
+*tfplan*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore plan files
+*.tfplan
+
+# Ignore lock files in non-root modules
+modules/**/.terraform.lock.hcl
