@@ -83,12 +83,13 @@ class ReportFormatter {
   static _formatOrdersByStatus(orders) {
     ConsoleFormatter.subheader('Orders by Status');
 
-    const columns = ['orderNumber', 'orderDate', 'totalPrice', 'processing_status', 'cae'];
+    const columns = ['orderNumber', 'orderDate', 'totalPrice', 'processing_status', 'voucherNumber', 'cae'];
     const formatters = {
-      orderNumber: (val) => this._truncate(val, 15),
+      orderNumber: (val) => val || '',
       orderDate: (val) => val ? new Date(val).toLocaleDateString('es-AR') : 'N/A',
       totalPrice: (val) => this._formatCurrency(val),
       processing_status: (val) => this._formatStatus(val),
+      voucherNumber: (val) => val ? String(val) : 'N/A',
       cae: (val) => val || 'N/A'
     };
 
@@ -97,10 +98,11 @@ class ReportFormatter {
       orderDate: 'Date',
       totalPrice: 'Amount',
       processing_status: 'Status',
+      voucherNumber: 'Voucher',
       cae: 'CAE'
     };
 
-    TableFormatter.format(orders, columns, { headers, formatters, maxWidth: 20 });
+    TableFormatter.format(orders, columns, { headers, formatters, maxWidth: 30 });
     ConsoleFormatter.newLine();
   }
 

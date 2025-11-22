@@ -3,9 +3,11 @@
  *
  * CLI command handler for Binance operations
  * Part of Presentation Layer (CLI)
+ *
+ * Updated to use Application Layer use cases following Clean Architecture
  */
 
-const BinanceOrderFetcher = require('../../../scripts/fetchBinanceOrders');
+const container = require('../../application/di/container');
 const ConsoleFormatter = require('../formatters/ConsoleFormatter');
 const ReportFormatter = require('../formatters/ReportFormatter');
 const logger = require('../../utils/logger');
@@ -52,21 +54,19 @@ class BinanceCommand {
 
   /**
    * Fetch orders from Binance
-   * @param {Object} binanceService - Binance service instance
+   * @param {Object} binanceService - Binance service instance (legacy, now optional)
    * @param {Object} options - Fetch options
    * @param {number} [options.days=7] - Number of days to fetch
    * @param {string} [options.tradeType='SELL'] - Trade type filter
    * @param {boolean} [options.autoProcess=false] - Auto-process orders
-   * @param {Object} [options.config] - Configuration
-   * @param {Object} [options.afipService] - AFIP service instance
+   * @param {Object} [options.config] - Configuration (legacy)
+   * @param {Object} [options.afipService] - AFIP service instance (legacy)
    */
   static async fetchOrders(binanceService, options = {}) {
     const {
       days = 7,
       tradeType = 'SELL',
-      autoProcess = false,
-      config = null,
-      afipService = null
+      autoProcess = false
     } = options;
 
     ConsoleFormatter.header('Fetching Binance Orders');
@@ -77,52 +77,59 @@ class BinanceCommand {
 
     logger.info('Binance fetch start', { days, tradeType, autoProcess, event: 'binance_fetch_start' });
 
-    const fetcher = new BinanceOrderFetcher();
-
     try {
-      ConsoleFormatter.progress('Initializing Binance fetcher');
-      await fetcher.initialize();
+      // Initialize container
+      await container.initialize();
+
+      // Get use case from DI container
+      const fetchBinanceOrdersUseCase = container.getFetchBinanceOrdersUseCase();
 
       ConsoleFormatter.progress('Fetching orders from Binance API');
-      const result = await fetcher.fetchToDatabase({ days, tradeType });
+      const result = await fetchBinanceOrdersUseCase.execute({ days, tradeType });
 
-      if (result.success) {
-        ReportFormatter.formatBinanceFetchSummary({
-          total: result.ordersCount,
-          newOrders: result.newOrdersCount,
-          existingOrders: result.ordersCount - result.newOrdersCount
+      // Format and display results
+      ReportFormatter.formatBinanceFetchSummary({
+        total: result.totalOrders,
+        newOrders: result.newOrders,
+        existingOrders: result.existingOrders
+      });
+
+      logger.info('Binance fetch success', {
+        totalOrders: result.totalOrders,
+        newOrders: result.newOrders,
+        event: 'binance_fetch_success'
+      });
+
+      // Auto-process if requested and new orders exist
+      if (autoProcess && result.newOrders > 0) {
+        ConsoleFormatter.progress('Auto-processing new orders to AFIP invoices');
+        logger.info('Auto-process start', {
+          newOrdersCount: result.newOrders,
+          event: 'auto_process_start'
         });
 
-        logger.info('Binance fetch success', {
-          ordersCount: result.ordersCount,
-          newOrdersCount: result.newOrdersCount,
-          event: 'binance_fetch_success'
+        const processResult = await this._processOrders();
+
+        ReportFormatter.formatProcessingSummary({
+          processed: processResult.totalOrders,
+          successful: processResult.processedOrders,
+          failed: processResult.failedOrders
         });
 
-        if (autoProcess && result.newOrdersCount > 0) {
-          ConsoleFormatter.progress('Auto-processing new orders to AFIP invoices');
-          logger.info('Auto-process start', {
-            newOrdersCount: result.newOrdersCount,
-            event: 'auto_process_start'
-          });
-
-          const processResult = await this._processOrders(config, afipService);
-
-          ReportFormatter.formatProcessingSummary(processResult);
-          logger.info('Auto-process complete', {
-            processed: processResult?.processed || 0,
-            successful: processResult?.successful || 0,
-            failed: processResult?.failed || 0,
-            event: 'auto_process_complete'
-          });
-        }
-
-        return result;
-      } else {
-        ConsoleFormatter.error('Failed to fetch orders', result.error);
-        logger.error('Binance fetch failed', { error: result.error, event: 'binance_fetch_failed' });
-        return result;
+        logger.info('Auto-process complete', {
+          processed: processResult.totalOrders,
+          successful: processResult.processedOrders,
+          failed: processResult.failedOrders,
+          event: 'auto_process_complete'
+        });
       }
+
+      return {
+        success: true,
+        ordersCount: result.totalOrders,
+        newOrdersCount: result.newOrders
+      };
+
     } catch (error) {
       ConsoleFormatter.error('Binance fetch error', error);
       logger.error('Binance fetch exception', {
@@ -130,6 +137,8 @@ class BinanceCommand {
         event: 'binance_fetch_exception'
       });
       return { success: false, error: error.message };
+    } finally {
+      await container.cleanup();
     }
   }
 
@@ -201,19 +210,17 @@ class BinanceCommand {
 
   /**
    * Process orders to AFIP invoices (internal helper)
+   * Uses Application Layer use case
    * @private
    */
-  static async _processOrders(config, afipService) {
-    const DirectInvoiceService = require('../../services/DirectInvoiceService');
-    const directInvoiceService = new DirectInvoiceService(config || {}, afipService);
+  static async _processOrders() {
+    // Get use case from DI container (already initialized)
+    const processUnprocessedOrdersUseCase = container.getProcessUnprocessedOrdersUseCase();
 
-    try {
-      await directInvoiceService.initialize();
-      const processResult = await directInvoiceService.processUnprocessedOrders();
-      return processResult;
-    } finally {
-      await directInvoiceService.close();
-    }
+    // Execute use case
+    const result = await processUnprocessedOrdersUseCase.execute();
+
+    return result;
   }
 }
 

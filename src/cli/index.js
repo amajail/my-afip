@@ -155,13 +155,14 @@ class CLI {
   async _handleMarkManual(args) {
     const orderNumber = args[0];
     const cae = args[1];
+    const voucherNumber = args[2] ? parseInt(args[2]) : null;
 
     if (!orderNumber || !cae) {
-      ConsoleFormatter.error('Usage: mark-manual <order-number> <cae>');
+      ConsoleFormatter.error('Usage: mark-manual <order-number> <cae> [voucher-number]');
       process.exit(1);
     }
 
-    return await ProcessCommand.markOrderAsManual(orderNumber, cae);
+    return await ProcessCommand.markOrderAsManual(orderNumber, cae, voucherNumber);
   }
 
   /**
@@ -184,9 +185,9 @@ class CLI {
     ConsoleFormatter.newLine();
 
     ConsoleFormatter.subheader('Processing Commands');
-    ConsoleFormatter.listItem('process                       Process all unprocessed orders');
-    ConsoleFormatter.listItem('process <order-number>        Process specific order (not yet implemented)');
-    ConsoleFormatter.listItem('mark-manual <order> <cae>     Mark order as manually processed');
+    ConsoleFormatter.listItem('process                              Process all unprocessed orders');
+    ConsoleFormatter.listItem('process <order-number>               Process specific order by number');
+    ConsoleFormatter.listItem('mark-manual <order> <cae> [voucher]  Mark order as manually processed');
     ConsoleFormatter.newLine();
 
     ConsoleFormatter.subheader('Examples');

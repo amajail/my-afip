@@ -251,9 +251,12 @@ class BinanceGatewayAdapter extends IBinanceGateway {
       sellerNickname: internalFormat.sellerNickname,
       tradeType: internalFormat.tradeType,
       createTime: internalFormat.createTime,
-      processingStatus: 'Unprocessed', // Default status for new orders
+      processedAt: null, // New orders haven't been processed yet
       processingMethod: null,
+      success: null,
       cae: null,
+      voucherNumber: null,
+      invoiceDate: null,
       errorMessage: null
     });
   }

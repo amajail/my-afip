@@ -154,7 +154,8 @@ describe('Domain Services', () => {
     test('should reject already processed orders', () => {
       const processedOrder = new Order({
         ...validOrderData,
-        processedAt: new Date()
+        processedAt: new Date(),
+        success: true
       });
       const result = OrderProcessor.canProcess(processedOrder);
 
