@@ -49,7 +49,11 @@ describe('FetchBinanceOrders Use Case', () => {
         }
       ];
 
-      mockBinanceGateway.fetchOrders.mockResolvedValue(mockBinanceOrders);
+      // Gateway should return Order entities, not plain objects
+      mockBinanceGateway.fetchOrders.mockResolvedValue([
+        new Order(mockBinanceOrders[0]),
+        new Order(mockBinanceOrders[1])
+      ]);
       mockOrderRepository.findByOrderNumber.mockResolvedValue(null); // No existing orders
       mockOrderRepository.saveMany.mockResolvedValue(undefined);
 
@@ -63,7 +67,7 @@ describe('FetchBinanceOrders Use Case', () => {
         existingOrders: 0
       });
 
-      expect(mockBinanceGateway.fetchOrders).toHaveBeenCalledWith(7, 'SELL');
+      expect(mockBinanceGateway.fetchOrders).toHaveBeenCalledWith({ days: 7, tradeType: 'SELL' });
       expect(mockOrderRepository.saveMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.any(Order),
@@ -99,7 +103,11 @@ describe('FetchBinanceOrders Use Case', () => {
         }
       ];
 
-      mockBinanceGateway.fetchOrders.mockResolvedValue(mockBinanceOrders);
+      // Gateway should return Order entities, not plain objects
+      mockBinanceGateway.fetchOrders.mockResolvedValue([
+        new Order(mockBinanceOrders[0]),
+        new Order(mockBinanceOrders[1])
+      ]);
 
       // First order exists, second doesn't
       mockOrderRepository.findByOrderNumber
@@ -152,7 +160,7 @@ describe('FetchBinanceOrders Use Case', () => {
       await useCase.execute();
 
       // Assert
-      expect(mockBinanceGateway.fetchOrders).toHaveBeenCalledWith(7, 'SELL');
+      expect(mockBinanceGateway.fetchOrders).toHaveBeenCalledWith({ days: 7, tradeType: 'SELL' });
     });
 
     it('should validate days parameter', async () => {
