@@ -194,6 +194,7 @@ class GenerateMonthlyReport extends UseCase {
         ? (order.isSuccessful() ? 'success' : 'failed')
         : 'pending',
       cae: order.cae || null,
+      voucherNumber: order.voucherNumber || null,
       error_message: order.errorMessage || null,
       processing_method: order.processingMethod || null
     }));

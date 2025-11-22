@@ -192,6 +192,7 @@ class ReportCommand {
       processing_status: order.status?.toLowerCase() || 'pending',
       processing_method: order.processing_method,
       cae: order.cae,
+      voucherNumber: order.voucher_number,
       error_message: order.error_message
     }));
   }

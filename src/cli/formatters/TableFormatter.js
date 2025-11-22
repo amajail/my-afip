@@ -34,10 +34,12 @@ class TableFormatter {
       widths[col] = Math.max(
         headerName.length,
         ...data.map(row => {
-          const value = formatters[col]
+          let value = formatters[col]
             ? formatters[col](row[col], row)
-            : String(row[col] || '');
-          return Math.min(value.length, maxWidth);
+            : row[col];
+          // Ensure value is a string and has a length property
+          const strValue = String(value ?? '');
+          return Math.min(strValue.length, maxWidth);
         })
       );
     });
