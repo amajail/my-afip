@@ -110,18 +110,26 @@ class SQLiteOrderRepository extends IOrderRepository {
   async findByDateRange(startDate, endDate) {
     await this.initialize();
 
-    try {
-      const rows = await this.db.getOrdersByDateRange(startDate, endDate);
-      return rows.map(row => this._fromDatabase(row));
-    } catch (error) {
-      logger.error('Failed to find orders by date range', {
-        startDate,
-        endDate,
-        error: error.message,
-        event: 'orders_date_range_find_failed'
+    const sql = `SELECT * FROM orders
+                 WHERE order_date >= ? AND order_date <= ?
+                 ORDER BY order_date DESC`;
+
+    return new Promise((resolve, reject) => {
+      this.db.db.all(sql, [startDate, endDate], (err, rows) => {
+        if (err) {
+          logger.error('Failed to find orders by date range', {
+            startDate,
+            endDate,
+            error: err.message,
+            event: 'orders_date_range_find_failed'
+          });
+          resolve([]); // Return empty array on error
+        } else {
+          const orders = rows.map(row => this._fromDatabase(row));
+          resolve(orders);
+        }
       });
-      return [];
-    }
+    });
   }
 
   /**
@@ -263,9 +271,12 @@ class SQLiteOrderRepository extends IOrderRepository {
       sellerNickname: order.sellerNickname,
       tradeType: order.tradeType,
       createTime: order.createTime,
-      processingStatus: order.processingStatus,
+      processedAt: order.processedAt,
       processingMethod: order.processingMethod,
+      success: order.success,
       cae: order.cae ? order.cae.value : null,
+      voucherNumber: order.voucherNumber,
+      invoiceDate: order.invoiceDate,
       errorMessage: order.errorMessage
     };
   }
@@ -287,9 +298,12 @@ class SQLiteOrderRepository extends IOrderRepository {
       sellerNickname: row.seller_nickname,
       tradeType: row.trade_type,
       createTime: row.create_time,
-      processingStatus: row.processing_status,
+      processedAt: row.processed_at,
       processingMethod: row.processing_method,
+      success: row.success === null ? null : (row.success === 1 || row.success === true),
       cae: row.cae,
+      voucherNumber: row.voucher_number,
+      invoiceDate: row.invoice_date,
       errorMessage: row.error_message
     });
   }
@@ -302,6 +316,13 @@ class SQLiteOrderRepository extends IOrderRepository {
       await this.db.close();
       this.initialized = false;
     }
+  }
+
+  /**
+   * Cleanup resources (alias for close)
+   */
+  async cleanup() {
+    return this.close();
   }
 }
 

@@ -135,11 +135,12 @@ class Order {
   get updatedAt() { return this._updatedAt; }
 
   /**
-   * Check if order has been processed
+   * Check if order has been processed successfully or failed
+   * An order is considered processed only if it has both processedAt and a success status
    * @returns {boolean}
    */
   isProcessed() {
-    return this._processedAt !== null;
+    return this._processedAt !== null && this._success !== null;
   }
 
   /**

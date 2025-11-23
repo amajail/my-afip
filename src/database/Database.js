@@ -204,6 +204,60 @@ class Database {
     });
   }
 
+  async updateOrder(orderNumber, orderData) {
+    const sql = `
+      UPDATE orders SET
+        amount = ?,
+        price = ?,
+        total_price = ?,
+        asset = ?,
+        fiat = ?,
+        buyer_nickname = ?,
+        seller_nickname = ?,
+        trade_type = ?,
+        create_time = ?,
+        order_date = ?,
+        processed_at = ?,
+        processing_method = ?,
+        success = ?,
+        cae = ?,
+        voucher_number = ?,
+        invoice_date = ?,
+        error_message = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE order_number = ?
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, [
+        orderData.amount,
+        orderData.price,
+        orderData.totalPrice,
+        orderData.asset,
+        orderData.fiat,
+        orderData.buyerNickname,
+        orderData.sellerNickname,
+        orderData.tradeType,
+        orderData.createTime,
+        orderData.orderDate,
+        orderData.processedAt,
+        orderData.processingMethod,
+        orderData.success,
+        orderData.cae,
+        orderData.voucherNumber,
+        orderData.invoiceDate,
+        orderData.errorMessage,
+        orderNumber
+      ], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes);
+        }
+      });
+    });
+  }
+
   async getProcessedOrders() {
     const sql = `
       SELECT order_number, processed_at, processing_method, success, cae, voucher_number, error_message
@@ -218,6 +272,23 @@ class Database {
           reject(err);
         } else {
           resolve(rows);
+        }
+      });
+    });
+  }
+
+  async getOrderByNumber(orderNumber) {
+    const sql = `
+      SELECT * FROM orders
+      WHERE order_number = ?
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.get(sql, [orderNumber], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
         }
       });
     });
@@ -270,7 +341,7 @@ class Database {
   async getUnprocessedOrders() {
     const sql = `
       SELECT * FROM orders
-      WHERE processed_at IS NULL OR (processed_at IS NOT NULL AND success = 0)
+      WHERE processed_at IS NULL OR success IS NULL OR success = 0
       ORDER BY create_time ASC
     `;
 

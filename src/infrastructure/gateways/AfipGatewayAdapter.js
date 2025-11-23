@@ -56,20 +56,26 @@ class AfipGatewayAdapter extends IAfipGateway {
 
       // Convert service result to domain InvoiceResult
       if (result.success) {
-        const cae = CAE.of(result.cae, result.caeExpiration);
+        // Convert AFIP date format (YYYYMMDD) to ISO string
+        const caeExpiration = this._convertAfipDate(result.caeExpiration);
 
-        return InvoiceResult.success(
-          cae,
-          result.voucherNumber,
-          invoice,
-          result.result // rawResponse
-        );
+        return InvoiceResult.success({
+          cae: result.cae,
+          caeExpiration: caeExpiration,
+          voucherNumber: result.voucherNumber,
+          invoiceDate: invoice.invoiceDate, // Use invoice date from original invoice
+          observations: [],
+          metadata: {
+            rawResponse: result.result
+          }
+        });
       } else {
         return InvoiceResult.failure(
           result.error,
-          invoice,
-          result.errorCode,
-          result.invoice // rawResponse
+          {
+            errorCode: result.errorCode,
+            rawResponse: result.invoice
+          }
         );
       }
     } catch (error) {
@@ -80,8 +86,10 @@ class AfipGatewayAdapter extends IAfipGateway {
 
       return InvoiceResult.failure(
         error.message,
-        invoice,
-        error.code || 'AFIP_GATEWAY_ERROR'
+        {
+          errorCode: error.code || 'AFIP_GATEWAY_ERROR',
+          invoice: invoice.toJSON()
+        }
       );
     }
   }
@@ -212,6 +220,22 @@ class AfipGatewayAdapter extends IAfipGateway {
         timestamp: new Date().toISOString()
       };
     }
+  }
+
+  /**
+   * Convert AFIP date format (YYYYMMDD) to ISO string (YYYY-MM-DD)
+   * @param {string} afipDate - Date in YYYYMMDD format
+   * @returns {string} Date in YYYY-MM-DD format
+   * @private
+   */
+  _convertAfipDate(afipDate) {
+    if (!afipDate || afipDate.length !== 8) {
+      return null;
+    }
+    const year = afipDate.substring(0, 4);
+    const month = afipDate.substring(4, 6);
+    const day = afipDate.substring(6, 8);
+    return `${year}-${month}-${day}`;
   }
 }
 

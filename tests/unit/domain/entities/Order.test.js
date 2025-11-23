@@ -104,7 +104,8 @@ describe('Order Entity', () => {
     test('isProcessed should return true for processed order', () => {
       const processedData = {
         ...validOrderData,
-        processedAt: new Date()
+        processedAt: new Date(),
+        success: true
       };
       const order = new Order(processedData);
       expect(order.isProcessed()).toBe(true);
@@ -155,7 +156,8 @@ describe('Order Entity', () => {
     test('should return false for processed SELL order', () => {
       const processedData = {
         ...validOrderData,
-        processedAt: new Date()
+        processedAt: new Date(),
+        success: true
       };
       const order = new Order(processedData);
       expect(order.canBeProcessed()).toBe(false);
@@ -198,7 +200,8 @@ describe('Order Entity', () => {
         ...validOrderData,
         orderDate: today.toISOString().split('T')[0],
         createTime: today.getTime(),
-        processedAt: new Date()
+        processedAt: new Date(),
+        success: true
       };
       const order = new Order(processedData);
       expect(order.isReadyForInvoicing()).toBe(false);
@@ -244,7 +247,8 @@ describe('Order Entity', () => {
     test('should throw DomainError if already processed', () => {
       const processedData = {
         ...validOrderData,
-        processedAt: new Date()
+        processedAt: new Date(),
+        success: true
       };
       const order = new Order(processedData);
 

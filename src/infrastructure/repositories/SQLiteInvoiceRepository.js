@@ -212,6 +212,13 @@ class SQLiteInvoiceRepository extends IInvoiceRepository {
       this.initialized = false;
     }
   }
+
+  /**
+   * Cleanup resources (alias for close)
+   */
+  async cleanup() {
+    return this.close();
+  }
 }
 
 module.exports = SQLiteInvoiceRepository;
