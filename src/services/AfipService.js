@@ -12,6 +12,7 @@ const {
   ErrorHandler
 } = require('../utils/errors');
 const { CUITValidator } = require('../utils/validators');
+const { AFIP_VOUCHER_TYPE } = require('../shared/constants');
 
 /**
  * @typedef {Object} AfipServiceConfig
@@ -326,7 +327,7 @@ class AfipService {
    *
    * @async
    * @param {number} [salePoint=null] - Point of sale number (uses config default if null)
-   * @param {number} [voucherType=11] - Voucher type (11=Type C, 6=Type B)
+   * @param {number} [voucherType=AFIP_VOUCHER_TYPE.INVOICE_C] - Voucher type
    * @returns {Promise<number>} Last voucher number used, or 0 if error/not found
    *
    * @example
@@ -334,7 +335,7 @@ class AfipService {
    * const nextNumber = lastNumber + 1;
    * console.log('Next voucher number:', nextNumber);
    */
-  async getLastVoucherNumber(salePoint = null, voucherType = 11) {
+  async getLastVoucherNumber(salePoint = null, voucherType = AFIP_VOUCHER_TYPE.INVOICE_C) {
     salePoint = salePoint || config.afip.ptoVta;
     if (!this.initialized) {
       throw new AfipError('AFIP service not initialized', 'AFIP_NOT_INITIALIZED');

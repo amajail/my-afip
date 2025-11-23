@@ -3,6 +3,7 @@ const AfipService = require('./AfipService');
 const Invoice = require('../models/Invoice');
 const logger = require('../utils/logger');
 const { ErrorHandler } = require('../utils/errors');
+const { AFIP_VOUCHER_TYPE, AFIP_CONCEPT, CURRENCY_CODE } = require('../shared/constants');
 
 class DirectInvoiceService {
   constructor(config, afipService = null) {
@@ -121,11 +122,11 @@ class DirectInvoiceService {
 
     // Convert database order to Invoice model format
     return new Invoice({
-      docType: 11, // Type C for monotributistas
+      docType: AFIP_VOUCHER_TYPE.INVOICE_C, // Type C for monotributistas
       docNumber: '', // Will be auto-assigned by AFIP
       docDate: invoiceDate,
-      concept: 2, // Services (allows wider date range than Products)
-      currency: 'PES',
+      concept: AFIP_CONCEPT.SERVICES, // Services (allows wider date range than Products)
+      currency: CURRENCY_CODE.ARS,
       exchange: 1,
       netAmount: Math.round(parseFloat(order.total_price)),
       totalAmount: Math.round(parseFloat(order.total_price)),
