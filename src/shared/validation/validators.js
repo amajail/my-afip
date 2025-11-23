@@ -6,6 +6,12 @@
  */
 
 const { ValidationError, DomainError } = require('../errors');
+const {
+  AFIP_CONCEPT,
+  AFIP_VOUCHER_TYPE,
+  CURRENCY_CODE,
+  INVOICE_DATE_RULES
+} = require('../constants');
 
 /**
  * CUIT Validator
@@ -250,14 +256,14 @@ class DateValidator {
 
   /**
    * Validate invoice date according to AFIP rules
-   * For services (concept 2): max 5 days in the past
-   * For products (concept 1): same day only
+   * For services: max days defined by INVOICE_DATE_RULES.SERVICES_MAX_DAYS
+   * For products: same day only (INVOICE_DATE_RULES.PRODUCTS_MAX_DAYS)
    * @param {string|Date} date - Invoice date
-   * @param {number} concept - Invoice concept (1=products, 2=services)
+   * @param {number} concept - Invoice concept (AFIP_CONCEPT.PRODUCTS, AFIP_CONCEPT.SERVICES, etc.)
    * @returns {Object} { valid: boolean, errors: string[] }
    */
-  static validateInvoiceDate(date, concept = 2) {
-    if (concept === 1) {
+  static validateInvoiceDate(date, concept = AFIP_CONCEPT.SERVICES) {
+    if (concept === AFIP_CONCEPT.PRODUCTS) {
       // Products: only today's date
       return this.validate(date, {
         allowPast: false,
@@ -265,11 +271,11 @@ class DateValidator {
         fieldName: 'invoice date'
       });
     } else {
-      // Services: up to 10 days in the past (AFIP regulation)
+      // Services: up to INVOICE_DATE_RULES.SERVICES_MAX_DAYS in the past (AFIP regulation)
       return this.validate(date, {
         allowPast: true,
         allowFuture: false,
-        maxDaysInPast: 10,
+        maxDaysInPast: INVOICE_DATE_RULES.SERVICES_MAX_DAYS,
         fieldName: 'invoice date'
       });
     }
@@ -316,7 +322,7 @@ class InvoiceValidator {
 
     // Validate document type
     if (invoice.docType) {
-      const validDocTypes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+      const validDocTypes = Object.values(AFIP_VOUCHER_TYPE);
       if (!validDocTypes.includes(invoice.docType)) {
         errors.push(`Invalid docType: ${invoice.docType}`);
       }
@@ -324,15 +330,15 @@ class InvoiceValidator {
 
     // Validate concept
     if (invoice.concept) {
-      const validConcepts = [1, 2, 3]; // 1=products, 2=services, 3=both
+      const validConcepts = Object.values(AFIP_CONCEPT);
       if (!validConcepts.includes(invoice.concept)) {
-        errors.push(`Invalid concept: ${invoice.concept} (must be 1, 2, or 3)`);
+        errors.push(`Invalid concept: ${invoice.concept} (must be PRODUCTS, SERVICES, or PRODUCTS_AND_SERVICES)`);
       }
     }
 
     // Validate currency
     if (invoice.currency) {
-      const validCurrencies = ['PES', 'DOL', 'EUR', 'USD'];
+      const validCurrencies = Object.values(CURRENCY_CODE);
       if (!validCurrencies.includes(invoice.currency)) {
         errors.push(`Invalid currency: ${invoice.currency}`);
       }
@@ -381,7 +387,7 @@ class InvoiceValidator {
     if (invoice.docDate) {
       const dateResult = DateValidator.validateInvoiceDate(
         invoice.docDate,
-        invoice.concept || 2
+        invoice.concept || AFIP_CONCEPT.SERVICES
       );
       if (!dateResult.valid) {
         errors.push(...dateResult.errors);

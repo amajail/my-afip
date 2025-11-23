@@ -3,10 +3,7 @@ const path = require('path');
 const config = require('./config');
 const AfipService = require('./services/AfipService');
 const BinanceService = require('./services/BinanceService');
-const DirectInvoiceService = require('./services/DirectInvoiceService');
 const { ConfigValidator } = require('./utils/validators');
-const { showCurrentMonthReport } = require('./commands/report');
-const { testBinanceConnection, fetchBinanceOrders, fetchBinanceMonth } = require('./commands/binance');
 
 class AfipInvoiceApp {
   constructor() {
@@ -48,34 +45,6 @@ class AfipInvoiceApp {
       fs.mkdirSync(path.dirname(this.config.outputPath), { recursive: true });
     }
     console.log('✅ Application initialized successfully');
-  }
-
-  async processInvoices(inputFile) {
-    await processInvoices(this, inputFile);
-  }
-
-  async testBinanceConnection() {
-    await testBinanceConnection(this.binanceService, this.config);
-  }
-
-  async fetchBinanceOrders(days = 7, tradeType = 'SELL', autoProcess = false) {
-    return await fetchBinanceOrders(this.binanceService, days, tradeType, autoProcess, this.config, this.afipService);
-  }
-
-  async fetchBinanceMonth(tradeType) {
-    await fetchBinanceMonth(tradeType, this.processOrders.bind(this));
-  }
-
-  async processOrders() {
-    const directInvoiceService = new DirectInvoiceService(this.config, this.afipService);
-    await directInvoiceService.initialize();
-    const result = await directInvoiceService.processUnprocessedOrders();
-    await directInvoiceService.close();
-    return result;
-  }
-
-  async showCurrentMonthReport() {
-    await showCurrentMonthReport();
   }
 }
 
