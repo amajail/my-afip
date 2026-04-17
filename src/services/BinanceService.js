@@ -31,9 +31,22 @@ class BinanceService {
     }
 
     this.initialized = true;
+    this._serverTimeOffset = 0;
     logger.info('Binance API service initialized', {
       event: 'binance_initialized'
     });
+  }
+
+  // Sync local clock with Binance server time to avoid recvWindow errors
+  async syncServerTime() {
+    try {
+      const response = await axios.get(`${this.baseURL}/api/v3/time`, { timeout: 5000 });
+      this._serverTimeOffset = response.data.serverTime - Date.now();
+      logger.debug('Binance server time synced', { offsetMs: this._serverTimeOffset });
+    } catch (error) {
+      logger.warn('Failed to sync Binance server time, using local clock', { error: error.message });
+      this._serverTimeOffset = 0;
+    }
   }
 
   // Create HMAC SHA256 signature for authenticated requests
@@ -57,8 +70,14 @@ class BinanceService {
       throw new BinanceError('Binance service not initialized', 'BINANCE_NOT_INITIALIZED');
     }
 
-    // Add timestamp for signature
-    params.timestamp = Date.now();
+    // Sync server time on first request
+    if (this._serverTimeOffset === 0) {
+      await this.syncServerTime();
+    }
+
+    // Add timestamp for signature (with server time offset to handle clock skew)
+    params.timestamp = Date.now() + (this._serverTimeOffset || 0);
+    params.recvWindow = 10000;
 
     const queryString = this.buildQueryString(params);
     const signature = this.createSignature(queryString);

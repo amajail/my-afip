@@ -1,0 +1,93 @@
+name: Weekly Binance Auto Invoice
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Every Monday at 9am UTC
+  workflow_dispatch:     # Allow manual trigger from GitHub UI
+
+jobs:
+  run-binance-auto:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create directories
+        run: mkdir -p data certificates
+
+      - name: Download database from Azure Blob
+        continue-on-error: true # First run will have no DB yet
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          az storage blob download \
+            --container-name afip-db \
+            --name afip-orders.db \
+            --file data/afip-orders.db \
+            --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+
+      - name: Decode AFIP certificates
+        env:
+          AFIP_CERT_B64: ${{ secrets.AFIP_CERT_B64 }}
+          AFIP_KEY_B64: ${{ secrets.AFIP_KEY_B64 }}
+        run: |
+          echo "$AFIP_CERT_B64" | base64 -d > certificates/cert.crt
+          echo "$AFIP_KEY_B64" | base64 -d > certificates/private.key
+
+      - name: Create .env file
+        env:
+          AFIP_CUIT: ${{ secrets.AFIP_CUIT }}
+          AFIP_ENVIRONMENT: ${{ secrets.AFIP_ENVIRONMENT }}
+          AFIP_PTOVTA: ${{ secrets.AFIP_PTOVTA }}
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+          BINANCE_SECRET_KEY: ${{ secrets.BINANCE_SECRET_KEY }}
+        run: |
+          cat > .env << EOF
+          AFIP_CUIT=$AFIP_CUIT
+          AFIP_ENVIRONMENT=$AFIP_ENVIRONMENT
+          AFIP_PTOVTA=$AFIP_PTOVTA
+          AFIP_CERT_PATH=./certificates/cert.crt
+          AFIP_KEY_PATH=./certificates/private.key
+          BINANCE_API_KEY=$BINANCE_API_KEY
+          BINANCE_SECRET_KEY=$BINANCE_SECRET_KEY
+          LOG_LEVEL=info
+          EOF
+
+      - name: Run binance:auto
+        id: run_auto
+        run: npm run binance:auto 2>&1 | tee run-output.txt
+
+      - name: Upload database to Azure Blob
+        if: always() # Save DB even if binance:auto had partial failures
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          az storage container create \
+            --name afip-db \
+            --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
+            --public-access off 2>/dev/null || true
+          az storage blob upload \
+            --container-name afip-db \
+            --name afip-orders.db \
+            --file data/afip-orders.db \
+            --overwrite \
+            --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Weekly Invoice Run — $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat run-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
