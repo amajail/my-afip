@@ -86,8 +86,8 @@ else
 fi
 echo ""
 
-# Step 3: Function App (Consumption plan, Node 20, Linux)
-echo -e "${YELLOW}[3/5] Function App (Consumption plan, Node 20)...${NC}"
+# Step 3: Function App (Consumption plan, Node 24, Linux)
+echo -e "${YELLOW}[3/5] Function App (Consumption plan, Node 24)...${NC}"
 if az functionapp show --name "$FUNCAPP_NAME" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   echo -e "${GREEN}✓ Already exists${NC}"
 else
@@ -97,7 +97,7 @@ else
     --storage-account "$FUNC_STORAGE_ACCOUNT" \
     --consumption-plan-location "$LOCATION" \
     --runtime node \
-    --runtime-version 20 \
+    --runtime-version 24 \
     --functions-version 4 \
     --os-type Linux > /dev/null
   echo -e "${GREEN}✓ Created${NC}"
