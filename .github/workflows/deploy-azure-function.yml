@@ -32,7 +32,6 @@ jobs:
         run: |
           zip -r deploy.zip . \
             --exclude "*.git*" \
-            --exclude "node_modules/*" \
             --exclude "dashboard/*" \
             --exclude "tests/*" \
             --exclude "docs/*" \
@@ -46,8 +45,7 @@ jobs:
           az functionapp deployment source config-zip \
             --name my-afip-func \
             --resource-group my-afip-rg \
-            --src deploy.zip \
-            --build-remote true
+            --src deploy.zip
 
       - name: Set app settings
         run: |
