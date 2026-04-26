@@ -504,12 +504,8 @@ class ConfigValidator {
       allMissingKeys.push(...afipResult.missingKeys);
     }
 
-    // Validate Binance config
-    const binanceResult = this.validateBinanceConfig(config.binance);
-    if (!binanceResult.valid) {
-      allErrors.push(...binanceResult.errors);
-      allMissingKeys.push(...binanceResult.missingKeys);
-    }
+    // Binance credentials are optional at startup — only needed for binance:fetch/binance-auto.
+    // BinanceCommand validates them before use.
 
     return {
       valid: allErrors.length === 0,
