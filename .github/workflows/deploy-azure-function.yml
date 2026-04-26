@@ -23,15 +23,55 @@ jobs:
 
       - run: npm ci
 
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Diagnose function app
+        run: |
+          echo "=== Function App Config ==="
+          az functionapp show \
+            --name my-afip-func \
+            --resource-group my-afip-rg \
+            --query "{state:state, linuxFxVersion:siteConfig.linuxFxVersion, nodeVersion:siteConfig.nodeVersion}" \
+            -o json
+
+      - name: Ensure Node 20 runtime
+        run: |
+          az functionapp config set \
+            --name my-afip-func \
+            --resource-group my-afip-rg \
+            --linux-fx-version "Node|20"
+
+      - name: Configure app settings
+        run: |
+          az functionapp config appsettings set \
+            --name my-afip-func \
+            --resource-group my-afip-rg \
+            --settings \
+              "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              "AzureWebJobsFeatureFlags=EnableWorkerIndexing" \
+              "FUNCTIONS_WORKER_RUNTIME=node" \
+              "WEBSITE_NODE_DEFAULT_VERSION=~20"
+
+      - name: Create deployment zip
+        run: |
+          zip -r deploy.zip . \
+            --exclude "*.git*" \
+            --exclude "dashboard/*" \
+            --exclude "tests/*" \
+            --exclude "docs/*" \
+            --exclude "scripts/*" \
+            --exclude "orders/*" \
+            --exclude "*.env*" \
+            --exclude "certificates/*"
+          echo "Zip size: $(du -sh deploy.zip | cut -f1)"
+          echo "Key files in zip:"
+          unzip -l deploy.zip | grep -E "host\.json|package\.json|src/functions"
+
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
-          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-
-      - name: Set app settings
-        uses: Azure/appservice-settings@v1
-        with:
-          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
-          app-settings-json: |
-            [{"name":"AZURE_STORAGE_CONNECTION_STRING","value":"${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}","slotSetting":false}]
+          app-name: my-afip-func
+          package: deploy.zip

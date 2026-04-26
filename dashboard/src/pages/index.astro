@@ -1,0 +1,251 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
+---
+
+<Layout title="AFIP Dashboard — Monthly Orders">
+  <section class="mx-auto max-w-6xl px-4 py-16 md:py-20 md:px-6">
+
+    <!-- Header -->
+    <div class="mb-10">
+      <p class="eyebrow mb-1">Monthly Orders</p>
+      <span class="accent-line"></span>
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <button id="btn-prev" aria-label="Previous month"
+            class="rounded-full w-8 h-8 flex items-center justify-center border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-primary)] transition-colors">
+            &#8249;
+          </button>
+          <h1 id="month-heading" class="text-2xl font-extrabold tracking-tight text-[var(--color-text-primary)]">
+            Loading…
+          </h1>
+          <button id="btn-next" aria-label="Next month"
+            class="rounded-full w-8 h-8 flex items-center justify-center border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-primary)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            &#8250;
+          </button>
+        </div>
+        <p id="last-updated" class="text-xs text-[var(--color-muted)]"></p>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-state" class="hidden card p-8 text-center mb-8">
+      <p class="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Could not load data</p>
+      <p class="text-xs text-[var(--color-muted)]">
+        The API is unreachable. Check that the Azure Function is deployed and
+        <code class="font-mono bg-[var(--color-surface-2)] px-1 rounded">PUBLIC_API_URL</code> is set.
+      </p>
+    </div>
+
+    <!-- Stats row (skeleton while loading) -->
+    <div id="stats-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
+      {[...Array(4)].map(() => (
+        <div class="card p-0 overflow-hidden">
+          <div class="card-strip"></div>
+          <div class="p-4 text-center">
+            <div class="skeleton h-7 w-16 mx-auto mb-1"></div>
+            <div class="skeleton h-3 w-20 mx-auto"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Invoiced amount card (skeleton) -->
+    <div id="invoiced-card" class="card mb-8 overflow-hidden">
+      <div class="card-strip"></div>
+      <div class="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p class="eyebrow mb-1">Total Invoiced (ARS)</p>
+          <div id="invoiced-amount" class="skeleton h-9 w-40"></div>
+        </div>
+        <div class="flex gap-6 text-center">
+          <div>
+            <div id="total-amount-usdt" class="skeleton h-6 w-24 mx-auto mb-1"></div>
+            <p class="text-xs text-[var(--color-muted)]">Total traded (USDT)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders table card -->
+    <div class="card overflow-hidden">
+      <div class="card-strip"></div>
+      <div class="p-5 border-b border-[var(--color-border)]">
+        <p class="text-sm font-bold text-[var(--color-text-primary)]">Orders</p>
+        <p id="table-subtitle" class="text-xs text-[var(--color-muted)] mt-0.5">Loading…</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">Order #</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">Date</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">USDT</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">ARS</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider">Status</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider hidden md:table-cell">CAE</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider hidden md:table-cell">Invoice date</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <!-- Skeleton rows -->
+            {[...Array(5)].map(() => (
+              <tr class="border-b border-[var(--color-border)] last:border-0">
+                <td class="px-4 py-3"><div class="skeleton h-4 w-28"></div></td>
+                <td class="px-4 py-3"><div class="skeleton h-4 w-20"></div></td>
+                <td class="px-4 py-3 text-right"><div class="skeleton h-4 w-14 ml-auto"></div></td>
+                <td class="px-4 py-3 text-right"><div class="skeleton h-4 w-20 ml-auto"></div></td>
+                <td class="px-4 py-3 text-center"><div class="skeleton h-5 w-16 mx-auto rounded-full"></div></td>
+                <td class="px-4 py-3 hidden md:table-cell"><div class="skeleton h-4 w-32"></div></td>
+                <td class="px-4 py-3 hidden md:table-cell"><div class="skeleton h-4 w-20"></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+</Layout>
+
+<script define:vars={{ apiUrl }}>
+  const API_URL = apiUrl;
+
+  // Parse YYYY-MM without timezone issues
+  function parseYearMonth(yearMonth) {
+    const [y, m] = yearMonth.split('-').map(Number);
+    return new Date(y, m - 1, 1);
+  }
+
+  function toYearMonth(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function fmt(n) {
+    return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
+  }
+
+  function fmtARS(n) {
+    return '$ ' + fmt(n);
+  }
+
+  function badgeClass(status) {
+    if (status === 'Success') return 'badge badge-success';
+    if (status === 'Failed')  return 'badge badge-failed';
+    return 'badge badge-pending';
+  }
+
+  function renderStats(stats) {
+    const defs = [
+      { label: 'Total', value: stats.total_orders },
+      { label: 'Successful', value: stats.successful_orders },
+      { label: 'Pending', value: stats.pending_orders },
+      { label: 'Failed', value: stats.failed_orders },
+    ];
+
+    const grid = document.getElementById('stats-grid');
+    grid.innerHTML = defs.map(d => `
+      <div class="card overflow-hidden">
+        <div class="card-strip"></div>
+        <div class="p-4 text-center">
+          <p class="text-2xl font-extrabold text-[var(--color-text-primary)] font-mono tracking-tight">${d.value ?? 0}</p>
+          <p class="text-xs text-[var(--color-muted)] mt-0.5">${d.label}</p>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('invoiced-amount').outerHTML =
+      `<p id="invoiced-amount" class="text-3xl font-extrabold text-[var(--color-text-primary)] font-mono tracking-tight">${fmtARS(stats.invoiced_amount)}</p>`;
+    document.getElementById('total-amount-usdt').outerHTML =
+      `<p id="total-amount-usdt" class="text-xl font-bold text-[var(--color-text-primary)] font-mono">${fmt(stats.total_amount)} USDT</p>`;
+  }
+
+  function renderOrders(orders) {
+    const tbody = document.getElementById('orders-tbody');
+    const subtitle = document.getElementById('table-subtitle');
+    subtitle.textContent = `${orders.length} order${orders.length !== 1 ? 's' : ''} this month`;
+
+    if (orders.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="px-4 py-10 text-center text-sm text-[var(--color-muted)]">No orders found for this month.</td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = orders.map(o => `
+      <tr class="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-2)] transition-colors">
+        <td class="px-4 py-3 font-mono text-xs text-[var(--color-text-primary)]">${o.order_number}</td>
+        <td class="px-4 py-3 text-xs text-[var(--color-muted)]">${o.order_date ?? '—'}</td>
+        <td class="px-4 py-3 text-right font-mono text-xs text-[var(--color-text-primary)]">${fmt(o.amount)}</td>
+        <td class="px-4 py-3 text-right font-mono text-xs text-[var(--color-text-primary)]">${fmtARS(o.total_price)}</td>
+        <td class="px-4 py-3 text-center"><span class="${badgeClass(o.status)}">${o.status}</span></td>
+        <td class="px-4 py-3 font-mono text-xs text-[var(--color-muted)] hidden md:table-cell">${o.cae ?? '—'}</td>
+        <td class="px-4 py-3 text-xs text-[var(--color-muted)] hidden md:table-cell">${o.invoice_date ?? '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  const now = new Date();
+  const currentMonth = toYearMonth(now);
+  let activeMonth = new URLSearchParams(location.search).get('month') ?? currentMonth;
+
+  function updateNav() {
+    const btnNext = document.getElementById('btn-next');
+    btnNext.disabled = activeMonth >= currentMonth;
+  }
+
+  async function load(yearMonth) {
+    document.getElementById('month-heading').textContent = 'Loading…';
+
+    if (!API_URL) {
+      document.getElementById('error-state').classList.remove('hidden');
+      document.getElementById('month-heading').textContent = 'Not configured';
+      return;
+    }
+
+    try {
+      const url = `${API_URL}?month=${yearMonth}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const monthLabel = parseYearMonth(data.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      document.getElementById('month-heading').textContent = monthLabel;
+      document.getElementById('last-updated').textContent =
+        'Last updated: ' + new Date(data.generated_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+
+      renderStats(data.stats);
+      renderOrders(data.orders);
+    } catch (err) {
+      document.getElementById('error-state').classList.remove('hidden');
+      document.getElementById('month-heading').textContent = 'Error loading data';
+      console.error('Dashboard load failed:', err);
+    }
+  }
+
+  function navigate(delta) {
+    const d = parseYearMonth(activeMonth);
+    d.setMonth(d.getMonth() + delta);
+    activeMonth = toYearMonth(d);
+
+    const params = new URLSearchParams(location.search);
+    if (activeMonth === currentMonth) {
+      params.delete('month');
+    } else {
+      params.set('month', activeMonth);
+    }
+    const qs = params.toString();
+    history.pushState({}, '', qs ? `?${qs}` : location.pathname);
+
+    updateNav();
+    load(activeMonth);
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', () => navigate(-1));
+  document.getElementById('btn-next').addEventListener('click', () => navigate(+1));
+
+  updateNav();
+  load(activeMonth);
+</script>
