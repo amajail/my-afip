@@ -28,6 +28,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Configure app settings
+        run: |
+          az functionapp config appsettings set \
+            --name my-afip-func \
+            --resource-group my-afip-rg \
+            --settings \
+              "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
+
       - name: Create deployment zip
         run: |
           zip -r deploy.zip . \
@@ -45,10 +54,3 @@ jobs:
         with:
           app-name: my-afip-func
           package: deploy.zip
-
-      - name: Set app settings
-        run: |
-          az functionapp config appsettings set \
-            --name my-afip-func \
-            --resource-group my-afip-rg \
-            --settings "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
