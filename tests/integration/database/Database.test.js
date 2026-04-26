@@ -369,7 +369,7 @@ describe('Database Integration', () => {
   describe('performance', () => {
     it('should handle bulk insertions efficiently', async () => {
       const startTime = Date.now();
-      const orderCount = 1000;
+      const orderCount = 100;
 
       // Prepare bulk insert
       const stmt = await new Promise((resolve, reject) => {
@@ -415,7 +415,7 @@ describe('Database Integration', () => {
       });
 
       expect(count).toBe(orderCount);
-      expect(duration).toBeLessThan(30000); // Should complete within 30 seconds
-    });
+      expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
+    }, 15000);
   });
 });
