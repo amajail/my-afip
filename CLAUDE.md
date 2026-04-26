@@ -24,7 +24,7 @@ A production-ready Node.js application for processing cryptocurrency P2P trading
 
 **Key Technologies:**
 - **Runtime:** Node.js 18+ (CommonJS modules)
-- **Database:** SQLite (file-based, ACID-compliant)
+- **Database:** Azure Table Storage (cloud, shared between local and GitHub Actions)
 - **External APIs:** AFIP WSFEv1 (facturajs SDK), Binance P2P API
 - **Testing:** Jest with 57% coverage threshold
 - **CI/CD:** GitHub Actions (Node 18.x, 20.x)
@@ -763,7 +763,17 @@ describe('Email', () => {
 
 ### Run Commands
 ```bash
-# Fetch Binance orders and process to AFIP invoices
+# --- Two-part workflow ---
+
+# Step 1: Run locally (requires Argentine IP — Binance blocks cloud providers)
+npm run binance:fetch          # Fetch orders from Binance → Azure Table Storage
+
+# Step 2: Runs automatically every Monday via GitHub Actions
+npm run process:auto           # Read Azure Table Storage → create AFIP invoices
+
+# --- Other commands ---
+
+# Fetch + immediately process in one step (local only)
 npm run binance:auto
 
 # Generate monthly report
@@ -774,7 +784,7 @@ npm test
 npm run test:coverage
 
 # All CLI commands (via node src/index.js <command>):
-# binance-auto, binance-fetch, binance-test
+# binance-fetch [days] [type], binance-auto, binance-test
 # report, report-stats
 # process, process <order-number>, mark-manual
 # help

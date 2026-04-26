@@ -121,7 +121,7 @@ class AzureTableDatabase {
   async getUnprocessedOrders() {
     const rows = [];
     for await (const entity of this.ordersClient.listEntities()) {
-      if (!entity.processedAt || entity.success === undefined || entity.success === false) {
+      if (!entity.processedAt) {
         rows.push(this._entityToRow(entity));
       }
     }
