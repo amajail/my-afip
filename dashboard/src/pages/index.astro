@@ -51,6 +51,23 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
       ))}
     </div>
 
+    <!-- Create invoices button (shown when pending > 0) -->
+    <div id="create-invoices-bar" class="hidden mb-6">
+      <div class="card overflow-hidden">
+        <div class="card-strip" style="background: var(--color-pending, #f59e0b)"></div>
+        <div class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p id="create-invoices-label" class="text-sm font-semibold text-[var(--color-text-primary)]"></p>
+          <div class="flex items-center gap-3">
+            <p id="create-invoices-feedback" class="text-xs"></p>
+            <button id="create-invoices-btn"
+              class="px-4 py-2 text-sm font-semibold rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              Create invoices
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Invoiced amount card (skeleton) -->
     <div id="invoiced-card" class="card mb-8 overflow-hidden">
       <div class="card-strip"></div>
@@ -198,6 +215,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
   async function load(yearMonth) {
     document.getElementById('month-heading').textContent = 'Loading…';
+    document.getElementById('create-invoices-bar').classList.add('hidden');
 
     if (!API_URL) {
       document.getElementById('error-state').classList.remove('hidden');
@@ -218,6 +236,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
       renderStats(data.stats);
       renderOrders(data.orders);
+      updateCreateBar(data.stats.pending_orders ?? 0, yearMonth);
     } catch (err) {
       document.getElementById('error-state').classList.remove('hidden');
       document.getElementById('month-heading').textContent = 'Error loading data';
@@ -242,6 +261,56 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     updateNav();
     load(activeMonth);
   }
+
+  function updateCreateBar(pendingCount, yearMonth) {
+    const bar = document.getElementById('create-invoices-bar');
+    const label = document.getElementById('create-invoices-label');
+    const btn = document.getElementById('create-invoices-btn');
+    const feedback = document.getElementById('create-invoices-feedback');
+
+    if (pendingCount > 0) {
+      label.textContent = `${pendingCount} pending invoice${pendingCount !== 1 ? 's' : ''} for ${parseYearMonth(yearMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+      btn.textContent = `Create invoice${pendingCount !== 1 ? 's' : ''}`;
+      feedback.textContent = '';
+      feedback.className = 'text-xs';
+      bar.classList.remove('hidden');
+    } else {
+      bar.classList.add('hidden');
+    }
+  }
+
+  async function createInvoices(yearMonth) {
+    const btn = document.getElementById('create-invoices-btn');
+    const feedback = document.getElementById('create-invoices-feedback');
+    const [year, month] = yearMonth.split('-').map(Number);
+    const processUrl = API_URL.replace('/orders', '/process-month');
+
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+    feedback.textContent = '';
+
+    try {
+      const res = await fetch(processUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+
+      feedback.textContent = `✓ ${data.processedOrders} invoice${data.processedOrders !== 1 ? 's' : ''} created`;
+      feedback.className = 'text-xs text-green-600 font-semibold';
+      load(yearMonth);
+    } catch (err) {
+      feedback.textContent = `Error: ${err.message}`;
+      feedback.className = 'text-xs text-red-500 font-semibold';
+      btn.disabled = false;
+      btn.textContent = 'Retry';
+    }
+  }
+
+  document.getElementById('create-invoices-btn').addEventListener('click', () => createInvoices(activeMonth));
 
   document.getElementById('btn-prev').addEventListener('click', () => navigate(-1));
   document.getElementById('btn-next').addEventListener('click', () => navigate(+1));

@@ -30,7 +30,7 @@ app.http('orders', {
         },
       };
     } catch (error) {
-      context.log.error('Failed to fetch orders', error.message);
+      context.error('Failed to fetch orders:', error.message);
       return {
         status: 500,
         jsonBody: { error: 'Failed to fetch orders' },

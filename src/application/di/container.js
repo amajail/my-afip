@@ -15,6 +15,7 @@ const BinanceGatewayAdapter = require('../../infrastructure/gateways/BinanceGate
 const FetchBinanceOrders = require('../use-cases/binance/FetchBinanceOrders');
 const CreateInvoice = require('../use-cases/invoices/CreateInvoice');
 const ProcessUnprocessedOrders = require('../use-cases/invoices/ProcessUnprocessedOrders');
+const ProcessMonthOrders = require('../use-cases/invoices/ProcessMonthOrders');
 const GenerateMonthlyReport = require('../use-cases/reports/GenerateMonthlyReport');
 
 /**
@@ -125,6 +126,10 @@ class Container {
    * Get GenerateMonthlyReport use case
    * @returns {GenerateMonthlyReport}
    */
+  getProcessMonthOrdersUseCase() {
+    return new ProcessMonthOrders(this.getOrderRepository(), this.getAfipGateway());
+  }
+
   getGenerateMonthlyReportUseCase() {
     return new GenerateMonthlyReport(
       this.getOrderRepository()
