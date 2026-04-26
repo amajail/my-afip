@@ -763,24 +763,21 @@ describe('Email', () => {
 
 ### Run Commands
 ```bash
-# Fetch and process orders
+# Fetch Binance orders and process to AFIP invoices
 npm run binance:auto
-
-# Process pending orders
-npm run orders
 
 # Generate monthly report
 npm run report
 
-# Check system status
-npm run status
-
-# Query invoice
-npm run query-full <voucher_number>
-
 # Run tests
 npm test
 npm run test:coverage
+
+# All CLI commands (via node src/index.js <command>):
+# binance-auto, binance-fetch, binance-test
+# report, report-stats
+# process, process <order-number>, mark-manual
+# help
 ```
 
 ### Key Files to Review Before Changes
@@ -810,4 +807,4 @@ This codebase follows enterprise-grade architectural patterns with clear separat
 
 For questions or clarifications, refer to the documentation in `docs/` or review existing code patterns.
 
-**Last Updated:** November 16, 2025
+**Last Updated:** April 2026
