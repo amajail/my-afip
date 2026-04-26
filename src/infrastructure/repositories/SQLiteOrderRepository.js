@@ -10,7 +10,7 @@ const Order = require('../../domain/entities/Order');
 const OrderNumber = require('../../domain/value-objects/OrderNumber');
 const Money = require('../../domain/value-objects/Money');
 const CAE = require('../../domain/value-objects/CAE');
-const Database = require('../../database/Database');
+const Database = require('../../database/AzureTableDatabase');
 const logger = require('../../utils/logger');
 
 class SQLiteOrderRepository extends IOrderRepository {
@@ -110,26 +110,18 @@ class SQLiteOrderRepository extends IOrderRepository {
   async findByDateRange(startDate, endDate) {
     await this.initialize();
 
-    const sql = `SELECT * FROM orders
-                 WHERE order_date >= ? AND order_date <= ?
-                 ORDER BY order_date DESC`;
-
-    return new Promise((resolve, reject) => {
-      this.db.db.all(sql, [startDate, endDate], (err, rows) => {
-        if (err) {
-          logger.error('Failed to find orders by date range', {
-            startDate,
-            endDate,
-            error: err.message,
-            event: 'orders_date_range_find_failed'
-          });
-          resolve([]); // Return empty array on error
-        } else {
-          const orders = rows.map(row => this._fromDatabase(row));
-          resolve(orders);
-        }
+    try {
+      const rows = await this.db.getOrdersByDateRange(startDate, endDate);
+      return rows.map(row => this._fromDatabase(row));
+    } catch (error) {
+      logger.error('Failed to find orders by date range', {
+        startDate,
+        endDate,
+        error: error.message,
+        event: 'orders_date_range_find_failed'
       });
-    });
+      return [];
+    }
   }
 
   /**

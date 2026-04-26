@@ -2,7 +2,7 @@ const DatabaseOrderTracker = require('../../../src/utils/DatabaseOrderTracker');
 const MockFactory = require('../../helpers/mock-factory');
 
 // Mock the Database dependency
-jest.mock('../../../src/database/Database');
+jest.mock('../../../src/database/AzureTableDatabase');
 
 describe('DatabaseOrderTracker', () => {
   let tracker;
@@ -33,7 +33,7 @@ describe('DatabaseOrderTracker', () => {
       getCurrentMonthStats: jest.fn().mockResolvedValue({})
     };
 
-    const Database = require('../../../src/database/Database');
+    const Database = require('../../../src/database/AzureTableDatabase');
     Database.mockImplementation(() => mockDb);
 
     tracker = new DatabaseOrderTracker();
