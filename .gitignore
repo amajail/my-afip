@@ -131,6 +131,7 @@ temp/
 # Backup files
 *.bak
 *.backup
+*.Zone.Identifier
 
 # Azure Functions local dev (contains secrets)
 local.settings.json
