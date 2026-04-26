@@ -172,10 +172,23 @@ class CLI {
   _showHelp() {
     ConsoleFormatter.header('AFIP Invoice Application - CLI Commands');
 
+    ConsoleFormatter.subheader('Workflow (two-part)');
+    ConsoleFormatter.listItem('Step 1 — run locally (requires Argentine IP):');
+    ConsoleFormatter.listItem('  npm run binance:fetch         Fetch orders from Binance → Azure Table Storage', 1);
+    ConsoleFormatter.listItem('Step 2 — runs automatically every Monday via GitHub Actions:');
+    ConsoleFormatter.listItem('  npm run process:auto          Read Azure Table Storage → create AFIP invoices', 1);
+    ConsoleFormatter.newLine();
+
     ConsoleFormatter.subheader('Binance Commands');
-    ConsoleFormatter.listItem('binance-auto [days] [type]    Fetch orders and auto-process (default: 7 days, SELL)');
-    ConsoleFormatter.listItem('binance-fetch [days] [type]   Fetch orders without processing');
+    ConsoleFormatter.listItem('binance-fetch [days] [type]   Fetch orders from Binance (local only, needs Argentine IP)');
+    ConsoleFormatter.listItem('binance-auto [days] [type]    Fetch orders and immediately process (local only)');
     ConsoleFormatter.listItem('binance-test                  Test Binance API connection');
+    ConsoleFormatter.newLine();
+
+    ConsoleFormatter.subheader('Processing Commands');
+    ConsoleFormatter.listItem('process                              Process all unprocessed orders to AFIP invoices');
+    ConsoleFormatter.listItem('process <order-number>               Process specific order by number');
+    ConsoleFormatter.listItem('mark-manual <order> <cae> [voucher]  Mark order as manually processed');
     ConsoleFormatter.newLine();
 
     ConsoleFormatter.subheader('Report Commands');
@@ -184,23 +197,10 @@ class CLI {
     ConsoleFormatter.listItem('report-stats                  Show statistics summary');
     ConsoleFormatter.newLine();
 
-    ConsoleFormatter.subheader('Processing Commands');
-    ConsoleFormatter.listItem('process                              Process all unprocessed orders');
-    ConsoleFormatter.listItem('process <order-number>               Process specific order by number');
-    ConsoleFormatter.listItem('mark-manual <order> <cae> [voucher]  Mark order as manually processed');
-    ConsoleFormatter.newLine();
-
-    ConsoleFormatter.subheader('Examples');
-    ConsoleFormatter.listItem('npm start binance-auto              # Fetch last 7 days + process', 1);
-    ConsoleFormatter.listItem('npm start binance-auto 30 BUY       # Fetch last 30 days BUY orders', 1);
-    ConsoleFormatter.listItem('npm start report                    # Show monthly report', 1);
-    ConsoleFormatter.listItem('npm start report status failed      # Show failed orders', 1);
-    ConsoleFormatter.listItem('npm start process                   # Process pending orders', 1);
-    ConsoleFormatter.newLine();
-
     ConsoleFormatter.subheader('NPM Scripts');
-    ConsoleFormatter.listItem('npm run binance:auto          # Same as: npm start binance-auto', 1);
-    ConsoleFormatter.listItem('npm run report                # Same as: npm start report', 1);
+    ConsoleFormatter.listItem('npm run binance:fetch         # Fetch orders locally → Azure Table Storage', 1);
+    ConsoleFormatter.listItem('npm run process:auto          # Process pending orders → AFIP invoices', 1);
+    ConsoleFormatter.listItem('npm run report                # Show monthly report', 1);
     ConsoleFormatter.newLine();
   }
 }

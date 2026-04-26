@@ -42,10 +42,10 @@ const shared = {
     cacheTokensPath: get('AFIP_CACHE_TOKENS_PATH', './.afip-tokens')
   },
 
-  // Binance API Configuration
+  // Binance API Configuration (optional — only needed for binance:fetch, not process:auto)
   binance: {
-    apiKey: safeGetRequired('BINANCE_API_KEY'),
-    secretKey: safeGetRequired('BINANCE_SECRET_KEY'),
+    apiKey: get('BINANCE_API_KEY', ''),
+    secretKey: get('BINANCE_SECRET_KEY', ''),
     apiUrl: get('BINANCE_API_URL', 'https://api.binance.com')
   },
 
