@@ -9,12 +9,22 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
     <!-- Header -->
     <div class="mb-10">
-      <p class="eyebrow mb-1">Current Month</p>
+      <p class="eyebrow mb-1">Monthly Orders</p>
       <span class="accent-line"></span>
       <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <h1 id="month-heading" class="text-2xl font-extrabold tracking-tight text-[var(--color-text-primary)]">
-          Loading…
-        </h1>
+        <div class="flex items-center gap-3">
+          <button id="btn-prev" aria-label="Previous month"
+            class="rounded-full w-8 h-8 flex items-center justify-center border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-primary)] transition-colors">
+            &#8249;
+          </button>
+          <h1 id="month-heading" class="text-2xl font-extrabold tracking-tight text-[var(--color-text-primary)]">
+            Loading…
+          </h1>
+          <button id="btn-next" aria-label="Next month"
+            class="rounded-full w-8 h-8 flex items-center justify-center border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-primary)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            &#8250;
+          </button>
+        </div>
         <p id="last-updated" class="text-xs text-[var(--color-muted)]"></p>
       </div>
     </div>
@@ -102,6 +112,16 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 <script define:vars={{ apiUrl }}>
   const API_URL = apiUrl;
 
+  // Parse YYYY-MM without timezone issues
+  function parseYearMonth(yearMonth) {
+    const [y, m] = yearMonth.split('-').map(Number);
+    return new Date(y, m - 1, 1);
+  }
+
+  function toYearMonth(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
   function fmt(n) {
     return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
   }
@@ -167,7 +187,18 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     `).join('');
   }
 
-  async function load() {
+  const now = new Date();
+  const currentMonth = toYearMonth(now);
+  let activeMonth = new URLSearchParams(location.search).get('month') ?? currentMonth;
+
+  function updateNav() {
+    const btnNext = document.getElementById('btn-next');
+    btnNext.disabled = activeMonth >= currentMonth;
+  }
+
+  async function load(yearMonth) {
+    document.getElementById('month-heading').textContent = 'Loading…';
+
     if (!API_URL) {
       document.getElementById('error-state').classList.remove('hidden');
       document.getElementById('month-heading').textContent = 'Not configured';
@@ -175,11 +206,12 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     }
 
     try {
-      const res = await fetch(API_URL);
+      const url = `${API_URL}?month=${yearMonth}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
-      const monthLabel = new Date(data.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const monthLabel = parseYearMonth(data.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       document.getElementById('month-heading').textContent = monthLabel;
       document.getElementById('last-updated').textContent =
         'Last updated: ' + new Date(data.generated_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
@@ -193,5 +225,27 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     }
   }
 
-  load();
+  function navigate(delta) {
+    const d = parseYearMonth(activeMonth);
+    d.setMonth(d.getMonth() + delta);
+    activeMonth = toYearMonth(d);
+
+    const params = new URLSearchParams(location.search);
+    if (activeMonth === currentMonth) {
+      params.delete('month');
+    } else {
+      params.set('month', activeMonth);
+    }
+    const qs = params.toString();
+    history.pushState({}, '', qs ? `?${qs}` : location.pathname);
+
+    updateNav();
+    load(activeMonth);
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', () => navigate(-1));
+  document.getElementById('btn-next').addEventListener('click', () => navigate(+1));
+
+  updateNav();
+  load(activeMonth);
 </script>

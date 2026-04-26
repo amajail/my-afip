@@ -128,10 +128,7 @@ class AzureTableDatabase {
     return rows.sort((a, b) => Number(a.create_time) - Number(b.create_time));
   }
 
-  async getCurrentMonthOrders() {
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
+  async getOrdersByMonth(yearMonth) {
     const rows = [];
     for await (const entity of this.ordersClient.listEntities()) {
       if (entity.orderDate && entity.orderDate.startsWith(yearMonth)) {
@@ -148,19 +145,31 @@ class AzureTableDatabase {
     });
   }
 
-  async getCurrentMonthStats() {
-    const orders = await this.getCurrentMonthOrders();
+  async getStatsByMonth(yearMonth) {
+    const orders = await this.getOrdersByMonth(yearMonth);
     return {
       total_orders: orders.length,
       processed_orders: orders.filter(o => o.processed_at).length,
       pending_orders: orders.filter(o => !o.processed_at).length,
       successful_orders: orders.filter(o => o.success === 1).length,
       failed_orders: orders.filter(o => o.processed_at && o.success === 0).length,
-      total_amount: orders.reduce((sum, o) => sum + (o.total_price || 0), 0),
+      total_amount: orders.reduce((sum, o) => sum + (o.amount || 0), 0),
       invoiced_amount: orders.filter(o => o.success === 1).reduce((sum, o) => sum + (o.total_price || 0), 0),
       earliest_date: orders.length ? orders.map(o => o.order_date).sort()[0] : null,
       latest_date: orders.length ? orders.map(o => o.order_date).sort().pop() : null,
     };
+  }
+
+  async getCurrentMonthOrders() {
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return this.getOrdersByMonth(yearMonth);
+  }
+
+  async getCurrentMonthStats() {
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return this.getStatsByMonth(yearMonth);
   }
 
   async getOrderStats() {
