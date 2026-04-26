@@ -40,13 +40,11 @@ jobs:
             --exclude "*.env*" \
             --exclude "certificates/*"
 
-      - name: Deploy via zip
-        run: |
-          az functionapp deploy \
-            --name my-afip-func \
-            --resource-group my-afip-rg \
-            --src-path deploy.zip \
-            --type zip
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: my-afip-func
+          package: deploy.zip
 
       - name: Set app settings
         run: |
