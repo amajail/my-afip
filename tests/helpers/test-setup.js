@@ -1,6 +1,11 @@
 // Global test setup and configuration
 require('dotenv').config({ path: '.env.test' });
 
+// Polyfill globalThis.crypto for Node 18 (became a global in Node 19)
+if (typeof globalThis.crypto === 'undefined') {
+  globalThis.crypto = require('crypto').webcrypto;
+}
+
 // Suppress console output during tests unless debugging
 if (!process.env.DEBUG_TESTS) {
   global.console = {
