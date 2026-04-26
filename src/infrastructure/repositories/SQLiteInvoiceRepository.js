@@ -6,7 +6,7 @@
  */
 
 const IInvoiceRepository = require('../../application/interfaces/IInvoiceRepository');
-const Database = require('../../database/Database');
+const Database = require('../../database/AzureTableDatabase');
 const logger = require('../../utils/logger');
 
 class SQLiteInvoiceRepository extends IInvoiceRepository {

@@ -23,18 +23,7 @@ jobs:
         run: npm ci
 
       - name: Create directories
-        run: mkdir -p data certificates
-
-      - name: Download database from Azure Blob
-        continue-on-error: true # First run will have no DB yet
-        env:
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: |
-          az storage blob download \
-            --container-name afip-db \
-            --name afip-orders.db \
-            --file data/afip-orders.db \
-            --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+        run: mkdir -p certificates
 
       - name: Decode AFIP certificates
         env:
@@ -51,6 +40,7 @@ jobs:
           AFIP_PTOVTA: ${{ secrets.AFIP_PTOVTA }}
           BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
           BINANCE_SECRET_KEY: ${{ secrets.BINANCE_SECRET_KEY }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: |
           cat > .env << EOF
           AFIP_CUIT=$AFIP_CUIT
@@ -60,28 +50,13 @@ jobs:
           AFIP_KEY_PATH=./certificates/private.key
           BINANCE_API_KEY=$BINANCE_API_KEY
           BINANCE_SECRET_KEY=$BINANCE_SECRET_KEY
+          AZURE_STORAGE_CONNECTION_STRING=$AZURE_STORAGE_CONNECTION_STRING
           LOG_LEVEL=info
           EOF
 
       - name: Run binance:auto
         id: run_auto
         run: npm run binance:auto 2>&1 | tee run-output.txt
-
-      - name: Upload database to Azure Blob
-        if: always() # Save DB even if binance:auto had partial failures
-        env:
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: |
-          az storage container create \
-            --name afip-db \
-            --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
-            --public-access off 2>/dev/null || true
-          az storage blob upload \
-            --container-name afip-db \
-            --name afip-orders.db \
-            --file data/afip-orders.db \
-            --overwrite \
-            --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
 
       - name: Write job summary
         if: always()

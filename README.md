@@ -100,13 +100,15 @@ Required GitHub secrets: `AFIP_CUIT`, `AFIP_CERT_B64`, `AFIP_KEY_B64`, `AFIP_ENV
 | `AFIP_KEY_PATH` | Yes | — | Path to AFIP private key |
 | `AFIP_ENVIRONMENT` | No | `production` | `production` or `homologacion` |
 | `AFIP_PTOVTA` | No | `2` | Point of sale number |
+| `AZURE_STORAGE_CONNECTION_STRING` | Yes | — | Azure Storage connection string (used as the database) |
 | `BINANCE_API_KEY` | Yes | — | Binance API key |
 | `BINANCE_SECRET_KEY` | Yes | — | Binance secret key |
-| `DB_PATH` | No | `./data/afip-orders.db` | SQLite database path |
 | `LOG_LEVEL` | No | `info` | Winston log level |
 | `INVOICE_OUTPUT_PATH` | No | `./data/processed` | Output directory |
 
 ### Binance API Setup
+
+> **Geographic restriction:** Binance P2P API requests must originate from an Argentine IP address. Requests from cloud providers (e.g., Azure Functions, AWS Lambda) are blocked. The automation workflow runs locally or from a machine with an Argentine IP.
 
 1. Go to Binance → Account → API Management
 2. Create a key with **Read** permission only
@@ -215,9 +217,15 @@ Coverage threshold: **57%** across branches, functions, lines, and statements.
 - Run `node src/index.js binance-test` to verify connectivity
 - Ensure API key has Read permission
 - Binance P2P API supports max 30 days per request, 6 months historical
+- **Requests blocked from cloud providers:** Binance P2P requires an Argentine IP — Azure Functions, AWS Lambda, and similar environments will be rejected. Run the workflow from a local machine or an Argentine-based server.
+
+**Azure Storage errors**
+- Verify `AZURE_STORAGE_CONNECTION_STRING` is set in `.env`
+- The app uses Azure Table Storage (not Blob Storage) for all data — no local DB file required
+- Tables (`orders`, `invoices`) are created automatically on first run
 
 **Duplicate orders**
-- Orders are deduplicated by `order_number` at database level
+- Orders are deduplicated by `order_number` at Azure Table Storage level
 - A failed attempt does not prevent retry on next run
 
 ## Security

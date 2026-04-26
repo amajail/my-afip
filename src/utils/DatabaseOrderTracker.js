@@ -1,4 +1,4 @@
-const Database = require('../database/Database');
+const Database = require('../database/AzureTableDatabase');
 const logger = require('./logger');
 
 class DatabaseOrderTracker {
