@@ -26,12 +26,12 @@ jobs:
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
-          app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
 
       - name: Set app settings
         uses: Azure/appservice-settings@v1
         with:
-          app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
           app-settings-json: |
             [{"name":"AZURE_STORAGE_CONNECTION_STRING","value":"${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}","slotSetting":false}]

@@ -16,13 +16,20 @@ Read-only monitoring dashboard for monthly Binance P2P orders and AFIP invoice s
   - `deploy-azure-function.yml` — triggered on changes to `src/functions/**`, deploys to Azure Function App
   - `deploy-dashboard.yml` — triggered on changes to `dashboard/**`, builds Astro and deploys to GitHub Pages
 
-### Secrets required
+### Repository configuration required
+
+**Secrets** (Settings → Secrets → Actions):
 
 | Secret | Description |
 |---|---|
-| `AZURE_FUNCTIONAPP_NAME` | Function App name in Azure |
 | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | Download from Azure portal → Function App → Get publish profile |
 | `AZURE_STORAGE_CONNECTION_STRING` | Already used in `weekly-invoicing.yml` |
+
+**Variables** (Settings → Variables → Actions):
+
+| Variable | Description |
+|---|---|
+| `AZURE_FUNCTIONAPP_NAME` | Function App name in Azure (e.g. `my-afip-func`) |
 | `AZURE_FUNCTION_ORDERS_URL` | Full function URL: `https://<funcapp>.azurewebsites.net/api/orders` |
 
 ### Manual setup after merging

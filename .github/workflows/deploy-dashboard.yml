@@ -38,7 +38,7 @@ jobs:
         run: npm run build
         working-directory: dashboard
         env:
-          PUBLIC_API_URL: ${{ secrets.AZURE_FUNCTION_ORDERS_URL }}
+          PUBLIC_API_URL: ${{ vars.AZURE_FUNCTION_ORDERS_URL }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
