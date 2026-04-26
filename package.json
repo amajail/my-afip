@@ -8,6 +8,7 @@
     "binance:fetch": "node src/index.js binance-fetch",
     "binance:auto": "node src/index.js binance-auto",
     "process:auto": "node src/index.js process",
+    "process:month": "node src/index.js process-month",
     "report": "node src/index.js report",
     "test": "jest",
     "test:watch": "jest --watch",
