@@ -89,16 +89,20 @@ class SQLiteOrderRepository extends IOrderRepository {
   async findUnprocessed() {
     await this.initialize();
 
-    try {
-      const rows = await this.db.getUnprocessedOrders();
-      return rows.map(row => this._fromDatabase(row));
-    } catch (error) {
-      logger.error('Failed to find unprocessed orders', {
-        error: error.message,
-        event: 'unprocessed_orders_find_failed'
-      });
-      return [];
+    const rows = await this.db.getUnprocessedOrders();
+    const orders = [];
+    for (const row of rows) {
+      try {
+        orders.push(this._fromDatabase(row));
+      } catch (error) {
+        logger.warn('Skipping invalid order row during deserialization', {
+          orderNumber: row.order_number,
+          error: error.message,
+          event: 'order_deserialization_failed'
+        });
+      }
     }
+    return orders;
   }
 
   /**
