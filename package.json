@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
+    "binance:fetch": "node src/index.js binance-fetch",
     "binance:auto": "node src/index.js binance-auto",
+    "process:auto": "node src/index.js process",
     "report": "node src/index.js report",
     "test": "jest",
     "test:watch": "jest --watch",
