@@ -42,10 +42,11 @@ jobs:
 
       - name: Deploy via zip
         run: |
-          az functionapp deployment source config-zip \
+          az functionapp deploy \
             --name my-afip-func \
             --resource-group my-afip-rg \
-            --src deploy.zip
+            --src-path deploy.zip \
+            --type zip
 
       - name: Set app settings
         run: |
