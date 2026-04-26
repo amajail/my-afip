@@ -128,6 +128,53 @@ class ProcessCommand {
   }
 
   /**
+   * Process all pending orders for a specific year/month
+   * @param {number} year
+   * @param {number} month
+   */
+  static async processOrdersByMonth(year, month) {
+    ConsoleFormatter.header(`Processing Pending Orders for ${year}-${String(month).padStart(2, '0')}`);
+
+    try {
+      await container.initialize();
+
+      const useCase = container.getProcessMonthOrdersUseCase();
+
+      ConsoleFormatter.progress('Submitting historical invoices to AFIP');
+      logger.info('Month order processing start', { year, month, event: 'month_order_processing_start' });
+
+      const result = await useCase.execute({ year, month });
+
+      if (result.totalOrders === 0) {
+        ConsoleFormatter.info(`No pending orders found for ${year}-${String(month).padStart(2, '0')}`);
+        return result;
+      }
+
+      ReportFormatter.formatProcessingSummary({
+        processed: result.totalOrders,
+        successful: result.processedOrders,
+        failed: result.failedOrders
+      });
+
+      logger.info('Month order processing complete', {
+        year, month,
+        processed: result.totalOrders,
+        successful: result.processedOrders,
+        failed: result.failedOrders,
+        event: 'month_order_processing_complete'
+      });
+
+      return result;
+    } catch (error) {
+      ConsoleFormatter.error('Month order processing failed', error);
+      logger.error('Month order processing exception', { error: error.message, year, month });
+      throw error;
+    } finally {
+      await container.cleanup();
+    }
+  }
+
+  /**
    * Mark order as manually processed
    * @param {string} orderNumber - Order number
    * @param {string} cae - CAE number

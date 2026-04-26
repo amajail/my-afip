@@ -41,6 +41,9 @@ class CLI {
         case 'process':
           return await this._handleProcess(args);
 
+        case 'process-month':
+          return await this._handleProcessMonth(args);
+
         case 'mark-manual':
           return await this._handleMarkManual(args);
 
@@ -149,6 +152,23 @@ class CLI {
   }
 
   /**
+   * Handle process-month command
+   * @private
+   */
+  async _handleProcessMonth(args) {
+    const year = parseInt(args[0]);
+    const month = parseInt(args[1]);
+
+    if (!year || !month) {
+      ConsoleFormatter.error('Usage: process-month <year> <month>  (e.g. process-month 2026 1)');
+      process.exit(1);
+    }
+
+    await this.app.initialize();
+    return await ProcessCommand.processOrdersByMonth(year, month);
+  }
+
+  /**
    * Handle mark-manual command
    * @private
    */
@@ -188,6 +208,7 @@ class CLI {
     ConsoleFormatter.subheader('Processing Commands');
     ConsoleFormatter.listItem('process                              Process all unprocessed orders to AFIP invoices');
     ConsoleFormatter.listItem('process <order-number>               Process specific order by number');
+    ConsoleFormatter.listItem('process-month <year> <month>         Create invoices for all pending orders in a month');
     ConsoleFormatter.listItem('mark-manual <order> <cae> [voucher]  Mark order as manually processed');
     ConsoleFormatter.newLine();
 

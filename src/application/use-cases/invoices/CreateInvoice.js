@@ -16,6 +16,7 @@ const { NotFoundError, DomainError } = require('../../../shared/errors');
  * @typedef {Object} CreateInvoiceInput
  * @property {string} orderNumber - Order number to create invoice for
  * @property {string} [invoiceDate] - Optional invoice date (YYYY-MM-DD), defaults to today
+ * @property {boolean} [skipAgeCheck] - Skip the 10-day age check (for historical order processing)
  */
 
 /**
@@ -57,9 +58,8 @@ class CreateInvoice extends UseCase {
     }
 
     if (input.invoiceDate) {
-      const validation = InvoiceDateValidator.validateDateFormat(input.invoiceDate);
-      if (!validation.valid) {
-        throw new ValidationError(`Invalid invoice date: ${validation.error}`);
+      if (!InvoiceDateValidator.isValidDateFormat(input.invoiceDate)) {
+        throw new ValidationError(`Invalid invoice date: must be YYYY-MM-DD`);
       }
     }
   }
@@ -73,7 +73,7 @@ class CreateInvoice extends UseCase {
   async execute(input) {
     this.validateInput(input);
 
-    const { orderNumber, invoiceDate } = input;
+    const { orderNumber, invoiceDate, skipAgeCheck } = input;
 
     logger.info('Creating invoice for order', { orderNumber });
 
@@ -92,8 +92,8 @@ class CreateInvoice extends UseCase {
         throw new DomainError(reason, { orderNumber });
       }
 
-      // 3. Validate order date is within AFIP limits
-      if (!order.isReadyForInvoicing()) {
+      // 3. Validate order date is within AFIP limits (skipped for historical processing)
+      if (!skipAgeCheck && !order.isReadyForInvoicing()) {
         throw new DomainError(
           'Order is too old to be invoiced (>10 days)',
           { orderNumber, orderDate: order.orderDate }
@@ -101,7 +101,7 @@ class CreateInvoice extends UseCase {
       }
 
       // 4. Create invoice from order
-      const invoice = Invoice.fromOrder(order, invoiceDate);
+      const invoice = Invoice.fromOrder(order, { invoiceDate });
 
       logger.info('Submitting invoice to AFIP', {
         orderNumber,
