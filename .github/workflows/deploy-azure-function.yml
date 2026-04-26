@@ -23,15 +23,35 @@ jobs:
 
       - run: npm ci
 
-      - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
-          app-name: my-afip-func
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create deployment zip
+        run: |
+          zip -r deploy.zip . \
+            --exclude "*.git*" \
+            --exclude "node_modules/*" \
+            --exclude "dashboard/*" \
+            --exclude "tests/*" \
+            --exclude "docs/*" \
+            --exclude "scripts/*" \
+            --exclude "orders/*" \
+            --exclude "*.env*" \
+            --exclude "certificates/*"
+
+      - name: Deploy via zip
+        run: |
+          az functionapp deployment source config-zip \
+            --name my-afip-func \
+            --resource-group my-afip-rg \
+            --src deploy.zip \
+            --build-remote true
 
       - name: Set app settings
-        uses: Azure/appservice-settings@v1
-        with:
-          app-name: my-afip-func
-          app-settings-json: |
-            [{"name":"AZURE_STORAGE_CONNECTION_STRING","value":"${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}","slotSetting":false}]
+        run: |
+          az functionapp config appsettings set \
+            --name my-afip-func \
+            --resource-group my-afip-rg \
+            --settings "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
