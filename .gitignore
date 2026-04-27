@@ -3,6 +3,8 @@
 .env.local
 .env.production
 .env.test
+# Exception: dashboard production URL is non-sensitive and committed
+!dashboard/.env.production
 
 # Project status (may contain sensitive configuration examples)
 PROJECT_STATUS.md
