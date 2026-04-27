@@ -243,6 +243,32 @@ class Order {
   }
 
   /**
+   * Reset a failed order back to unprocessed so it can be retried.
+   * @returns {Order} New unprocessed Order instance
+   */
+  resetForRetry() {
+    if (!this.isFailed()) {
+      throw new DomainError('Only failed orders can be reset for retry', { orderNumber: this._orderNumber.value });
+    }
+    return new Order({
+      orderNumber: this._orderNumber.value,
+      amount: this._amount,
+      price: this._price,
+      totalPrice: this._totalAmount.amount,
+      asset: this._asset,
+      fiat: this._fiat,
+      buyerNickname: this._buyerNickname,
+      sellerNickname: this._sellerNickname,
+      tradeType: this._tradeType,
+      createTime: this._createTime,
+      orderDate: this._orderDate,
+      notes: this._notes,
+      createdAt: this._createdAt,
+      updatedAt: new Date()
+    });
+  }
+
+  /**
    * Add notes to the order
    * @param {string} notes - Notes to add
    * @returns {Order} New Order instance with notes

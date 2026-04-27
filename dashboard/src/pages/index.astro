@@ -236,7 +236,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
       renderStats(data.stats);
       renderOrders(data.orders);
-      updateCreateBar(data.stats.pending_orders ?? 0, yearMonth);
+      updateCreateBar(data.stats.pending_orders ?? 0, data.stats.failed_orders ?? 0, yearMonth);
     } catch (err) {
       document.getElementById('error-state').classList.remove('hidden');
       document.getElementById('month-heading').textContent = 'Error loading data';
@@ -262,15 +262,20 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     load(activeMonth);
   }
 
-  function updateCreateBar(pendingCount, yearMonth) {
+  function updateCreateBar(pendingCount, failedCount, yearMonth) {
     const bar = document.getElementById('create-invoices-bar');
     const label = document.getElementById('create-invoices-label');
     const btn = document.getElementById('create-invoices-btn');
     const feedback = document.getElementById('create-invoices-feedback');
+    const retryable = pendingCount + failedCount;
 
-    if (pendingCount > 0) {
-      label.textContent = `${pendingCount} pending invoice${pendingCount !== 1 ? 's' : ''} for ${parseYearMonth(yearMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-      btn.textContent = `Create invoice${pendingCount !== 1 ? 's' : ''}`;
+    if (retryable > 0) {
+      const parts = [];
+      if (pendingCount > 0) parts.push(`${pendingCount} pending`);
+      if (failedCount > 0) parts.push(`${failedCount} failed`);
+      const monthLabel = parseYearMonth(yearMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      label.textContent = `${parts.join(', ')} invoice${retryable !== 1 ? 's' : ''} for ${monthLabel}`;
+      btn.textContent = failedCount > 0 && pendingCount === 0 ? `Retry invoice${failedCount !== 1 ? 's' : ''}` : `Create invoice${retryable !== 1 ? 's' : ''}`;
       feedback.textContent = '';
       feedback.className = 'text-xs';
       bar.classList.remove('hidden');
@@ -301,7 +306,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
       feedback.textContent = `✓ ${data.processedOrders} invoice${data.processedOrders !== 1 ? 's' : ''} created`;
       feedback.className = 'text-xs text-green-600 font-semibold';
-      load(yearMonth);
+      setTimeout(() => load(yearMonth), 1500);
     } catch (err) {
       feedback.textContent = `Error: ${err.message}`;
       feedback.className = 'text-xs text-red-500 font-semibold';

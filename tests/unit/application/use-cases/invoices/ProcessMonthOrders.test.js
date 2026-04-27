@@ -9,7 +9,21 @@ const makeOrder = (orderDate, orderNumber = '1234567890') => ({
   canBeProcessed: () => true,
   isSellTrade: () => true,
   isProcessed: () => false,
+  isFailed: () => false,
 });
+
+const makeFailedOrder = (orderDate, orderNumber = '9999999999') => {
+  const reset = makeOrder(orderDate, orderNumber);
+  return {
+    orderNumber: { value: orderNumber },
+    orderDate,
+    canBeProcessed: () => false,
+    isSellTrade: () => true,
+    isProcessed: () => true,
+    isFailed: () => true,
+    resetForRetry: () => reset,
+  };
+};
 
 describe('ProcessMonthOrders', () => {
   let orderRepository;
@@ -19,6 +33,7 @@ describe('ProcessMonthOrders', () => {
   beforeEach(() => {
     orderRepository = {
       findUnprocessed: jest.fn(),
+      findFailedByMonth: jest.fn().mockResolvedValue([]),
       findByOrderNumber: jest.fn(),
       update: jest.fn(),
     };
@@ -141,6 +156,23 @@ describe('ProcessMonthOrders', () => {
       expect(result.processedOrders).toBe(1);
       expect(result.failedOrders).toBe(2);
       expect(result.results).toHaveLength(3);
+    });
+
+    it('should include failed orders from the month and reset them before retrying', async () => {
+      const failedOrder = makeFailedOrder('2026-01-10', '555');
+      orderRepository.findUnprocessed.mockResolvedValue([]);
+      orderRepository.findFailedByMonth.mockResolvedValue([failedOrder]);
+
+      const createSpy = jest.spyOn(useCase.createInvoiceUseCase, 'execute').mockResolvedValue({
+        orderNumber: '555', success: true, cae: 'CAE555', error: null,
+      });
+
+      const result = await useCase.execute({ year: 2026, month: 1 });
+
+      expect(orderRepository.update).toHaveBeenCalledWith(failedOrder.resetForRetry());
+      expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ orderNumber: '555', skipAgeCheck: true }));
+      expect(result.totalOrders).toBe(1);
+      expect(result.processedOrders).toBe(1);
     });
 
     it('should handle thrown errors from CreateInvoice without aborting remaining orders', async () => {

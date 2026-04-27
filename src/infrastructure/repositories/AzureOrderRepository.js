@@ -129,6 +129,29 @@ class AzureOrderRepository extends IOrderRepository {
   }
 
   /**
+   * Find failed orders for a given month
+   * @param {string} yearMonth - Month in YYYY-MM format
+   * @returns {Promise<Order[]>} Failed orders for the month
+   */
+  async findFailedByMonth(yearMonth) {
+    await this.initialize();
+
+    try {
+      const rows = await this.db.getOrdersByMonth(yearMonth);
+      return rows
+        .filter(row => row.processed_at && row.success === 0)
+        .map(row => this._fromDatabase(row));
+    } catch (error) {
+      logger.error('Failed to find failed orders by month', {
+        yearMonth,
+        error: error.message,
+        event: 'orders_failed_month_find_failed'
+      });
+      return [];
+    }
+  }
+
+  /**
    * Find orders by trade type
    * @param {string} tradeType - 'BUY' or 'SELL'
    * @returns {Promise<Order[]>} Orders of specified type

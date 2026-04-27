@@ -51,11 +51,20 @@ class ProcessMonthOrders extends UseCase {
     logger.info('Processing historical month orders', { yearMonth, invoiceDate });
 
     const allUnprocessed = await this.orderRepository.findUnprocessed();
-    const monthOrders = allUnprocessed
-      .filter(o => o.orderDate && o.orderDate.startsWith(yearMonth))
+    const unprocessedForMonth = allUnprocessed.filter(o => o.orderDate && o.orderDate.startsWith(yearMonth));
+
+    const failedForMonth = await this.orderRepository.findFailedByMonth(yearMonth);
+    for (const order of failedForMonth) {
+      await this.orderRepository.update(order.resetForRetry());
+    }
+
+    const monthOrders = [...unprocessedForMonth, ...failedForMonth]
       .sort((a, b) => a.orderDate.localeCompare(b.orderDate));
 
-    logger.info(`Found ${monthOrders.length} pending orders for ${yearMonth}`);
+    logger.info(`Found ${monthOrders.length} orders to process for ${yearMonth}`, {
+      unprocessed: unprocessedForMonth.length,
+      retrying: failedForMonth.length,
+    });
 
     if (monthOrders.length === 0) {
       return { year, month, totalOrders: 0, processedOrders: 0, failedOrders: 0, results: [] };
