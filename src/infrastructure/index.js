@@ -11,8 +11,8 @@ const gateways = require('./gateways');
 
 module.exports = {
   // Repositories
-  SQLiteOrderRepository: repositories.SQLiteOrderRepository,
-  SQLiteInvoiceRepository: repositories.SQLiteInvoiceRepository,
+  AzureOrderRepository: repositories.AzureOrderRepository,
+  AzureInvoiceRepository: repositories.AzureInvoiceRepository,
 
   // Gateways
   AfipGatewayAdapter: gateways.AfipGatewayAdapter,

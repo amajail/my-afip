@@ -1,3 +1,5 @@
+> Archived — superseded as of April 2026.
+
 # Azure Functions + Azure Table Storage Migration Plan
 
 **Application**: AFIP Invoice Processing System

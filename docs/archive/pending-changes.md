@@ -1,3 +1,5 @@
+> Archived — superseded as of April 2026.
+
 1) create a tf infra pipeline to create
 Resource group
 Azure data table (table api)

@@ -1,5 +1,5 @@
 /**
- * SQLiteOrderRepository
+ * AzureOrderRepository
  *
  * SQLite implementation of IOrderRepository interface
  * Part of Infrastructure Layer
@@ -13,7 +13,7 @@ const CAE = require('../../domain/value-objects/CAE');
 const Database = require('../../database/AzureTableDatabase');
 const logger = require('../../utils/logger');
 
-class SQLiteOrderRepository extends IOrderRepository {
+class AzureOrderRepository extends IOrderRepository {
   constructor(database = null) {
     super();
     this.db = database || new Database();
@@ -322,4 +322,4 @@ class SQLiteOrderRepository extends IOrderRepository {
   }
 }
 
-module.exports = SQLiteOrderRepository;
+module.exports = AzureOrderRepository;

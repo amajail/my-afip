@@ -6,8 +6,8 @@
  */
 
 // Infrastructure
-const SQLiteOrderRepository = require('../../infrastructure/repositories/SQLiteOrderRepository');
-const SQLiteInvoiceRepository = require('../../infrastructure/repositories/SQLiteInvoiceRepository');
+const AzureOrderRepository = require('../../infrastructure/repositories/AzureOrderRepository');
+const AzureInvoiceRepository = require('../../infrastructure/repositories/AzureInvoiceRepository');
 const AfipGatewayAdapter = require('../../infrastructure/gateways/AfipGatewayAdapter');
 const BinanceGatewayAdapter = require('../../infrastructure/gateways/BinanceGatewayAdapter');
 
@@ -37,7 +37,7 @@ class Container {
    */
   getOrderRepository() {
     if (!this._singletons.has('orderRepository')) {
-      const repository = new SQLiteOrderRepository();
+      const repository = new AzureOrderRepository();
       this._singletons.set('orderRepository', repository);
     }
     return this._singletons.get('orderRepository');
@@ -49,7 +49,7 @@ class Container {
    */
   getInvoiceRepository() {
     if (!this._singletons.has('invoiceRepository')) {
-      const repository = new SQLiteInvoiceRepository();
+      const repository = new AzureInvoiceRepository();
       this._singletons.set('invoiceRepository', repository);
     }
     return this._singletons.get('invoiceRepository');
