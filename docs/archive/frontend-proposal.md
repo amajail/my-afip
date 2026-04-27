@@ -1,3 +1,5 @@
+> Archived — superseded as of April 2026.
+
 # AFIP Electronic Invoicing - Frontend Web Application Proposal
 
 ## Executive Summary
