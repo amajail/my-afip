@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 
 const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
+const functionKey = import.meta.env.PUBLIC_FUNCTION_KEY ?? '';
 ---
 
 <Layout title="AFIP Dashboard — Monthly Orders">
@@ -126,8 +127,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
   </section>
 </Layout>
 
-<script define:vars={{ apiUrl }}>
+<script define:vars={{ apiUrl, functionKey }}>
   const API_URL = apiUrl;
+  const FUNCTION_KEY = functionKey;
+  const authHeaders = FUNCTION_KEY ? { 'x-functions-key': FUNCTION_KEY } : {};
 
   // Parse YYYY-MM without timezone issues
   function parseYearMonth(yearMonth) {
@@ -225,7 +228,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
     try {
       const url = `${API_URL}?month=${yearMonth}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
@@ -297,7 +300,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     try {
       const res = await fetch(processUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ year, month }),
       });
       const data = await res.json();

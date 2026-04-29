@@ -30,7 +30,7 @@ function cleanupCerts(paths) {
 
 app.http('processMonth', {
   methods: ['POST'],
-  authLevel: 'anonymous',
+  authLevel: 'function',
   route: 'process-month',
   handler: async (request, context) => {
     const corsHeaders = { 'Access-Control-Allow-Origin': apiConfig.corsOrigins };
