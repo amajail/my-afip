@@ -6,7 +6,7 @@ const MONTH_RE = /^\d{4}-(?:0[1-9]|1[0-2])$/;
 
 app.http('orders', {
   methods: ['GET'],
-  authLevel: 'anonymous',
+  authLevel: 'function',
   route: 'orders',
   handler: async (request, context) => {
     try {

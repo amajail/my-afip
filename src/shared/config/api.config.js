@@ -35,7 +35,7 @@ module.exports = {
 
     // CORS settings
     corsEnabled: getBoolean('CORS_ENABLED', true),
-    corsOrigins: get('CORS_ORIGINS', '*'),
+    corsOrigins: get('CORS_ORIGINS', 'https://my-afip-dashboard.azurestaticapps.net'),
 
     // Rate limiting
     rateLimitEnabled: getBoolean('RATE_LIMIT_ENABLED', true),
