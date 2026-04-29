@@ -59,6 +59,8 @@ jobs:
               "AFIP_ENVIRONMENT=${{ secrets.AFIP_ENVIRONMENT }}" \
               "AFIP_PTOVTA=${{ secrets.AFIP_PTOVTA }}" \
               "AFIP_CERT_B64=${{ secrets.AFIP_CERT_B64 }}" \
+              "AFIP_KEY_B64=${{ secrets.AFIP_KEY_B64 }}" \
+              "AFIP_CACHE_TOKENS_PATH=/tmp/.afip-tokens"
               "AFIP_KEY_B64=${{ secrets.AFIP_KEY_B64 }}"
 
       - name: Create deployment zip
