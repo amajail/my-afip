@@ -26,7 +26,7 @@ jobs:
         run: npm run build
         working-directory: dashboard
         env:
-          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
           PUBLIC_FUNCTION_KEY: ${{ secrets.AZURE_FUNCTION_KEY }}
 
       - name: Deploy to Azure Static Web Apps
