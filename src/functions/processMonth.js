@@ -2,8 +2,6 @@ const { app } = require('@azure/functions');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { api: apiConfig } = require('../shared/config/api.config');
-
 const YEAR_MONTH_RE = /^\d{4}$|^([1-9]|1[0-2])$/;
 
 function decodeCerts() {
@@ -33,7 +31,6 @@ app.http('processMonth', {
   authLevel: 'function',
   route: 'process-month',
   handler: async (request, context) => {
-    const corsHeaders = { 'Access-Control-Allow-Origin': apiConfig.corsOrigins };
     let certPaths = null;
 
     try {
@@ -42,10 +39,10 @@ app.http('processMonth', {
       const month = parseInt(body?.month);
 
       if (!year || year < 2000 || year > 2100) {
-        return { status: 400, jsonBody: { error: 'year must be a valid 4-digit number' }, headers: corsHeaders };
+        return { status: 400, jsonBody: { error: 'year must be a valid 4-digit number' } };
       }
       if (!month || month < 1 || month > 12) {
-        return { status: 400, jsonBody: { error: 'month must be between 1 and 12' }, headers: corsHeaders };
+        return { status: 400, jsonBody: { error: 'month must be between 1 and 12' } };
       }
 
       // Reconstruct AFIP certs from base64 env vars
@@ -65,7 +62,7 @@ app.http('processMonth', {
 
         return {
           jsonBody: { generated_at: new Date().toISOString(), ...result },
-          headers: { ...corsHeaders, 'Cache-Control': 'no-store' },
+          headers: { 'Cache-Control': 'no-store' },
         };
       } finally {
         await container.cleanup();
@@ -74,7 +71,7 @@ app.http('processMonth', {
 
     } catch (error) {
       context.error('process-month failed:', error.message);
-      return { status: 500, jsonBody: { error: error.message }, headers: corsHeaders };
+      return { status: 500, jsonBody: { error: error.message } };
     } finally {
       cleanupCerts(certPaths);
     }
