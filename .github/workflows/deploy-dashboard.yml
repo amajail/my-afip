@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'dashboard/**'
+      - '.github/workflows/deploy-dashboard.yml'
   workflow_dispatch:
 
 jobs:
