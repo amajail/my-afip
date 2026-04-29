@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/functions/**'
-      - 'src/database/AzureTableDatabase.js'
+      - 'src/**'
       - 'host.json'
       - 'package.json'
+      - '.github/workflows/deploy-azure-function.yml'
   workflow_dispatch:
 
 jobs:
@@ -61,6 +61,7 @@ jobs:
               "AFIP_CERT_B64=${{ secrets.AFIP_CERT_B64 }}" \
               "AFIP_KEY_B64=${{ secrets.AFIP_KEY_B64 }}" \
               "AFIP_CACHE_TOKENS_PATH=/tmp/.afip-tokens"
+              "AFIP_KEY_B64=${{ secrets.AFIP_KEY_B64 }}"
 
       - name: Create deployment zip
         run: |
