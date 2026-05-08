@@ -345,6 +345,31 @@ describe('Invoice Entity', () => {
 
       expect(invoice.invoiceDate).toBe(customDate);
     });
+
+    test('should clamp dueDate to invoiceDate when invoicing historically', () => {
+      // Order from the past, being invoiced today (historical processing)
+      const pastOrderDate = new Date();
+      pastOrderDate.setDate(pastOrderDate.getDate() - 60);
+      const pastOrder = new Order({
+        ...orderData,
+        orderDate: pastOrderDate.toISOString().split('T')[0]
+      });
+      const recentDate = new Date();
+      recentDate.setDate(recentDate.getDate() - 2);
+      const futureInvoiceDate = recentDate.toISOString().split('T')[0];
+      const invoice = Invoice.fromOrder(pastOrder, { invoiceDate: futureInvoiceDate });
+
+      // FchVtoPago must be >= CbteFch or AFIP rejects the invoice
+      expect(invoice.dueDate).toBe(futureInvoiceDate);
+      expect(invoice.invoiceDate).toBe(futureInvoiceDate);
+    });
+
+    test('should keep dueDate as order date when invoicing same day', () => {
+      const order = new Order(orderData);
+      const invoice = Invoice.fromOrder(order);
+
+      expect(invoice.dueDate).toBe(order.orderDate);
+    });
   });
 
   describe('constants', () => {
