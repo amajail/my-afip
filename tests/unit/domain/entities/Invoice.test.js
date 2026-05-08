@@ -348,8 +348,15 @@ describe('Invoice Entity', () => {
 
     test('should clamp dueDate to invoiceDate when invoicing historically', () => {
       // Order from the past, being invoiced today (historical processing)
-      const pastOrder = new Order({ ...orderData, orderDate: '2026-03-08' });
-      const futureInvoiceDate = '2026-04-26';
+      const pastOrderDate = new Date();
+      pastOrderDate.setDate(pastOrderDate.getDate() - 60);
+      const pastOrder = new Order({
+        ...orderData,
+        orderDate: pastOrderDate.toISOString().split('T')[0]
+      });
+      const recentDate = new Date();
+      recentDate.setDate(recentDate.getDate() - 2);
+      const futureInvoiceDate = recentDate.toISOString().split('T')[0];
       const invoice = Invoice.fromOrder(pastOrder, { invoiceDate: futureInvoiceDate });
 
       // FchVtoPago must be >= CbteFch or AFIP rejects the invoice
