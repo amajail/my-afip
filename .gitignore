@@ -1,3 +1,6 @@
+# Claude Code local session files
+.claude/
+
 # Environment variables (contains sensitive data)
 .env
 .env.local

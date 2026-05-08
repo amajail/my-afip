@@ -131,6 +131,32 @@ describe('Order Entity', () => {
       const order = new Order(failedData);
       expect(order.isFailed()).toBe(true);
     });
+
+    describe('resetForRetry', () => {
+      test('should return unprocessed copy of a failed order', () => {
+        const failedOrder = new Order({
+          ...validOrderData,
+          processedAt: new Date(),
+          success: false,
+          errorMessage: 'AFIP rejected invoice: [10001] some error',
+        });
+        const reset = failedOrder.resetForRetry();
+        expect(reset.isProcessed()).toBe(false);
+        expect(reset.isFailed()).toBe(false);
+        expect(reset.orderNumber.value).toBe(failedOrder.orderNumber.value);
+        expect(reset.canBeProcessed()).toBe(true);
+      });
+
+      test('should throw for a non-failed order', () => {
+        const order = new Order(validOrderData);
+        expect(() => order.resetForRetry()).toThrow();
+      });
+
+      test('should throw for a successfully processed order', () => {
+        const successOrder = new Order({ ...validOrderData, processedAt: new Date(), success: true });
+        expect(() => successOrder.resetForRetry()).toThrow();
+      });
+    });
   });
 
   describe('trade type methods', () => {

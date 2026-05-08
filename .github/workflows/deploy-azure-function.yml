@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/functions/**'
-      - 'src/database/AzureTableDatabase.js'
+      - 'src/**'
       - 'host.json'
       - 'package.json'
+      - '.github/workflows/deploy-azure-function.yml'
   workflow_dispatch:
 
 jobs:
@@ -53,7 +53,15 @@ jobs:
               "AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
               "AzureWebJobsFeatureFlags=EnableWorkerIndexing" \
               "FUNCTIONS_WORKER_RUNTIME=node" \
-              "WEBSITE_NODE_DEFAULT_VERSION=~20"
+              "WEBSITE_NODE_DEFAULT_VERSION=~20" \
+              "CORS_ORIGINS=${{ secrets.SWA_URL }}" \
+              "AFIP_CUIT=${{ secrets.AFIP_CUIT }}" \
+              "AFIP_ENVIRONMENT=${{ secrets.AFIP_ENVIRONMENT }}" \
+              "AFIP_PTOVTA=${{ secrets.AFIP_PTOVTA }}" \
+              "AFIP_CERT_B64=${{ secrets.AFIP_CERT_B64 }}" \
+              "AFIP_KEY_B64=${{ secrets.AFIP_KEY_B64 }}" \
+              "AFIP_CACHE_TOKENS_PATH=/tmp/.afip-tokens"
+              "AFIP_KEY_B64=${{ secrets.AFIP_KEY_B64 }}"
 
       - name: Create deployment zip
         run: |

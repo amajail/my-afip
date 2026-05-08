@@ -392,7 +392,8 @@ class Invoice {
       concept: InvoiceConcept.SERVICES, // Crypto trading is a service
       serviceFrom: servicePeriod.from,
       serviceTo: servicePeriod.to,
-      dueDate: servicePeriod.to
+      // AFIP requires FchVtoPago >= CbteFch; clamp dueDate up when invoicing historically
+      dueDate: invoiceDate > servicePeriod.to ? invoiceDate : servicePeriod.to
     });
   }
 }

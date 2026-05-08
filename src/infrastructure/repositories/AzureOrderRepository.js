@@ -1,5 +1,5 @@
 /**
- * SQLiteOrderRepository
+ * AzureOrderRepository
  *
  * SQLite implementation of IOrderRepository interface
  * Part of Infrastructure Layer
@@ -13,7 +13,7 @@ const CAE = require('../../domain/value-objects/CAE');
 const Database = require('../../database/AzureTableDatabase');
 const logger = require('../../utils/logger');
 
-class SQLiteOrderRepository extends IOrderRepository {
+class AzureOrderRepository extends IOrderRepository {
   constructor(database = null) {
     super();
     this.db = database || new Database();
@@ -123,6 +123,29 @@ class SQLiteOrderRepository extends IOrderRepository {
         endDate,
         error: error.message,
         event: 'orders_date_range_find_failed'
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Find failed orders for a given month
+   * @param {string} yearMonth - Month in YYYY-MM format
+   * @returns {Promise<Order[]>} Failed orders for the month
+   */
+  async findFailedByMonth(yearMonth) {
+    await this.initialize();
+
+    try {
+      const rows = await this.db.getOrdersByMonth(yearMonth);
+      return rows
+        .filter(row => row.processed_at && row.success === 0)
+        .map(row => this._fromDatabase(row));
+    } catch (error) {
+      logger.error('Failed to find failed orders by month', {
+        yearMonth,
+        error: error.message,
+        event: 'orders_failed_month_find_failed'
       });
       return [];
     }
@@ -322,4 +345,4 @@ class SQLiteOrderRepository extends IOrderRepository {
   }
 }
 
-module.exports = SQLiteOrderRepository;
+module.exports = AzureOrderRepository;

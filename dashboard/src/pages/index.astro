@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 
 const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
+const functionKey = import.meta.env.PUBLIC_FUNCTION_KEY ?? '';
 ---
 
 <Layout title="AFIP Dashboard — Monthly Orders">
@@ -54,7 +55,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     <!-- Create invoices button (shown when pending > 0) -->
     <div id="create-invoices-bar" class="hidden mb-6">
       <div class="card overflow-hidden">
-        <div class="card-strip" style="background: var(--color-pending, #f59e0b)"></div>
+        <div class="card-strip" style="background: var(--color-accent-pending)"></div>
         <div class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p id="create-invoices-label" class="text-sm font-semibold text-[var(--color-text-primary)]"></p>
           <div class="flex items-center gap-3">
@@ -126,8 +127,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
   </section>
 </Layout>
 
-<script define:vars={{ apiUrl }}>
+<script define:vars={{ apiUrl, functionKey }}>
   const API_URL = apiUrl;
+  const FUNCTION_KEY = functionKey;
+  const authHeaders = FUNCTION_KEY ? { 'x-functions-key': FUNCTION_KEY } : {};
 
   // Parse YYYY-MM without timezone issues
   function parseYearMonth(yearMonth) {
@@ -225,7 +228,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
     try {
       const url = `${API_URL}?month=${yearMonth}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: authHeaders });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
@@ -236,7 +239,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
       renderStats(data.stats);
       renderOrders(data.orders);
-      updateCreateBar(data.stats.pending_orders ?? 0, yearMonth);
+      updateCreateBar(data.stats.pending_orders ?? 0, data.stats.failed_orders ?? 0, yearMonth);
     } catch (err) {
       document.getElementById('error-state').classList.remove('hidden');
       document.getElementById('month-heading').textContent = 'Error loading data';
@@ -262,15 +265,20 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     load(activeMonth);
   }
 
-  function updateCreateBar(pendingCount, yearMonth) {
+  function updateCreateBar(pendingCount, failedCount, yearMonth) {
     const bar = document.getElementById('create-invoices-bar');
     const label = document.getElementById('create-invoices-label');
     const btn = document.getElementById('create-invoices-btn');
     const feedback = document.getElementById('create-invoices-feedback');
+    const retryable = pendingCount + failedCount;
 
-    if (pendingCount > 0) {
-      label.textContent = `${pendingCount} pending invoice${pendingCount !== 1 ? 's' : ''} for ${parseYearMonth(yearMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
-      btn.textContent = `Create invoice${pendingCount !== 1 ? 's' : ''}`;
+    if (retryable > 0) {
+      const parts = [];
+      if (pendingCount > 0) parts.push(`${pendingCount} pending`);
+      if (failedCount > 0) parts.push(`${failedCount} failed`);
+      const monthLabel = parseYearMonth(yearMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      label.textContent = `${parts.join(', ')} invoice${retryable !== 1 ? 's' : ''} for ${monthLabel}`;
+      btn.textContent = failedCount > 0 && pendingCount === 0 ? `Retry invoice${failedCount !== 1 ? 's' : ''}` : `Create invoice${retryable !== 1 ? 's' : ''}`;
       feedback.textContent = '';
       feedback.className = 'text-xs';
       bar.classList.remove('hidden');
@@ -292,7 +300,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
     try {
       const res = await fetch(processUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ year, month }),
       });
       const data = await res.json();
@@ -301,7 +309,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 
       feedback.textContent = `✓ ${data.processedOrders} invoice${data.processedOrders !== 1 ? 's' : ''} created`;
       feedback.className = 'text-xs text-green-600 font-semibold';
-      load(yearMonth);
+      setTimeout(() => load(yearMonth), 1500);
     } catch (err) {
       feedback.textContent = `Error: ${err.message}`;
       feedback.className = 'text-xs text-red-500 font-semibold';

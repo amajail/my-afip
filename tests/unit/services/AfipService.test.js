@@ -169,9 +169,13 @@ describe('AfipService', () => {
       };
 
       mockAfipSDK.createBill.mockResolvedValue({
-        FeCabResp: { Resultado: 'R' }, // Rejected
-        Observaciones: [{ Msg: 'Error en los datos' }],
-        Err: { Msg: 'Invalid data' }
+        FeCabResp: { Resultado: 'R' },
+        FeDetResp: {
+          FECAEDetResponse: [{
+            Resultado: 'R',
+            Observaciones: { Obs: [{ Code: 10001, Msg: 'Error en los datos' }] }
+          }]
+        }
       });
 
       await service.initialize();
@@ -179,6 +183,7 @@ describe('AfipService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('AFIP rejected invoice');
+      expect(result.error).toContain('[10001] Error en los datos');
     });
 
     it('should handle network errors', async () => {

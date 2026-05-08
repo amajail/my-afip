@@ -1,5 +1,5 @@
 /**
- * SQLiteInvoiceRepository
+ * AzureInvoiceRepository
  *
  * SQLite implementation of IInvoiceRepository interface
  * Part of Infrastructure Layer
@@ -9,7 +9,7 @@ const IInvoiceRepository = require('../../application/interfaces/IInvoiceReposit
 const Database = require('../../database/AzureTableDatabase');
 const logger = require('../../utils/logger');
 
-class SQLiteInvoiceRepository extends IInvoiceRepository {
+class AzureInvoiceRepository extends IInvoiceRepository {
   constructor(database = null) {
     super();
     this.db = database || new Database();
@@ -221,4 +221,4 @@ class SQLiteInvoiceRepository extends IInvoiceRepository {
   }
 }
 
-module.exports = SQLiteInvoiceRepository;
+module.exports = AzureInvoiceRepository;

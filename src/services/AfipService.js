@@ -241,9 +241,12 @@ class AfipService {
           result: result
         };
       } else {
-        // AFIP rejected the invoice
+        const obs = result.FeDetResp?.FECAEDetResponse?.[0]?.Observaciones?.Obs;
+        const obsText = Array.isArray(obs) && obs.length > 0
+          ? obs.map(o => `[${o.Code}] ${o.Msg}`).join('; ')
+          : 'no details from AFIP';
         throw new AfipInvoiceRejectedError(
-          'AFIP rejected invoice',
+          `AFIP rejected invoice: ${obsText}`,
           result,
           { voucherNumber, invoice: invoiceData }
         );

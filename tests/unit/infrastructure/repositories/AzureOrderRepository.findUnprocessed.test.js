@@ -1,4 +1,4 @@
-const SQLiteOrderRepository = require('../../../../src/infrastructure/repositories/SQLiteOrderRepository');
+const AzureOrderRepository = require('../../../../src/infrastructure/repositories/AzureOrderRepository');
 
 jest.mock('../../../../src/database/AzureTableDatabase');
 jest.mock('../../../../src/utils/logger', () => ({
@@ -45,13 +45,13 @@ function makeRepo(rows) {
   const Database = require('../../../../src/database/AzureTableDatabase');
   Database.mockImplementation(() => mockDb);
 
-  const repo = new SQLiteOrderRepository();
+  const repo = new AzureOrderRepository();
   repo.initialized = true;
   repo.db = mockDb;
   return repo;
 }
 
-describe('SQLiteOrderRepository.findUnprocessed()', () => {
+describe('AzureOrderRepository.findUnprocessed()', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns all orders when all rows are valid', async () => {
@@ -93,7 +93,7 @@ describe('SQLiteOrderRepository.findUnprocessed()', () => {
       initialize: jest.fn().mockResolvedValue(),
       getUnprocessedOrders: jest.fn().mockRejectedValue(new Error('Azure connection failed')),
     };
-    const repo = new SQLiteOrderRepository();
+    const repo = new AzureOrderRepository();
     repo.initialized = true;
     repo.db = mockDb;
 

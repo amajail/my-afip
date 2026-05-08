@@ -4,10 +4,10 @@
  * Export all repository implementations
  */
 
-const SQLiteOrderRepository = require('./SQLiteOrderRepository');
-const SQLiteInvoiceRepository = require('./SQLiteInvoiceRepository');
+const AzureOrderRepository = require('./AzureOrderRepository');
+const AzureInvoiceRepository = require('./AzureInvoiceRepository');
 
 module.exports = {
-  SQLiteOrderRepository,
-  SQLiteInvoiceRepository
+  AzureOrderRepository,
+  AzureInvoiceRepository
 };
