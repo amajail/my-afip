@@ -145,10 +145,19 @@ class CLI {
       );
     }
 
-    return await ProcessCommand.processUnprocessedOrders(
+    const result = await ProcessCommand.processUnprocessedOrders(
       this.app.config,
       this.app.afipService
     );
+
+    if (result && result.failed > 0 && result.successful === 0) {
+      ConsoleFormatter.error(
+        `All ${result.failed} invoice(s) failed — see errors above`
+      );
+      process.exitCode = 1;
+    }
+
+    return result;
   }
 
   /**

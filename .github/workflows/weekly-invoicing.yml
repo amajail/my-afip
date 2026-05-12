@@ -50,9 +50,31 @@ jobs:
           LOG_LEVEL=info
           EOF
 
+      # AFIP's WSFEv1 endpoint negotiates a weak (<=1024-bit) Diffie-Hellman key,
+      # which OpenSSL 3 / Node 18+ reject by default ("dh key too small").
+      # Lower the security level just for this step so the TLS handshake succeeds.
+      - name: Allow legacy DH params for AFIP
+        run: |
+          cat > "$RUNNER_TEMP/openssl.cnf" <<'EOF'
+          openssl_conf = openssl_init
+
+          [openssl_init]
+          ssl_conf = ssl_sect
+
+          [ssl_sect]
+          system_default = system_default_sect
+
+          [system_default_sect]
+          CipherString = DEFAULT:@SECLEVEL=0
+          EOF
+
       - name: Process pending orders to AFIP invoices
         id: run_process
-        run: npm run process:auto 2>&1 | tee run-output.txt
+        env:
+          OPENSSL_CONF: ${{ runner.temp }}/openssl.cnf
+        run: |
+          set -o pipefail
+          npm run process:auto 2>&1 | tee run-output.txt
 
       - name: Write job summary
         if: always()
