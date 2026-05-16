@@ -1,0 +1,30 @@
+# GitHub Pages (legacy Jekyll) configuration.
+#
+# This repository is primarily a Node.js app; GitHub Pages only needs to render
+# the root README. Exclude application source and the Astro dashboard so Jekyll
+# doesn't try to parse non-Jekyll files (e.g. `dashboard/src/pages/*.astro`,
+# whose `---` frontmatter contains JS/TS, not YAML).
+
+theme: jekyll-theme-primer
+
+exclude:
+  - dashboard
+  - src
+  - tests
+  - scripts
+  - coverage
+  - data
+  - logs
+  - certificates
+  - examples
+  - infra
+  - afip-documentation
+  - node_modules
+  - host.json
+  - jest.config.js
+  - package.json
+  - package-lock.json
+  - Dockerfile
+  - .env.example
+  - .github
+  - CLAUDE.md
