@@ -4,6 +4,14 @@ on:
   schedule:
     - cron: '0 9 * * 1' # Every Monday at 9am UTC
   workflow_dispatch:     # Allow manual trigger from GitHub UI
+    inputs:
+      reprocess_month:
+        description: >-
+          Optional YYYY-MM to reprocess (e.g. 2026-06). Resets failed orders in
+          that month and re-invoices them with skipAgeCheck. Leave blank for the
+          normal weekly run.
+        required: false
+        default: ''
 
 jobs:
   process-afip-invoices:
@@ -77,9 +85,18 @@ jobs:
         id: run_process
         env:
           OPENSSL_CONF: ${{ runner.temp }}/openssl.cnf
+          REPROCESS_MONTH: ${{ github.event.inputs.reprocess_month }}
         run: |
           set -o pipefail
-          npm run process:auto 2>&1 | tee run-output.txt
+          if [ -n "$REPROCESS_MONTH" ]; then
+            YEAR="${REPROCESS_MONTH%%-*}"
+            MONTH="${REPROCESS_MONTH##*-}"
+            MONTH=$((10#$MONTH))   # strip leading zero so the CLI gets e.g. 6
+            echo "Reprocessing failed/pending orders for $YEAR-$MONTH"
+            npm run process:month -- "$YEAR" "$MONTH" 2>&1 | tee run-output.txt
+          else
+            npm run process:auto 2>&1 | tee run-output.txt
+          fi
 
       - name: Write job summary
         if: always()
