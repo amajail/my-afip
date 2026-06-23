@@ -56,7 +56,12 @@ jobs:
       - name: Allow legacy DH params for AFIP
         run: |
           cat > "$RUNNER_TEMP/openssl.cnf" <<'EOF'
+          # Node.js loads its OpenSSL config under the "nodejs_conf" appname,
+          # not "openssl_conf". Using openssl_conf here is honored by the
+          # openssl CLI but silently ignored by Node, so SECLEVEL=0 never
+          # takes effect and the AFIP handshake still fails. Set both.
           openssl_conf = openssl_init
+          nodejs_conf = openssl_init
 
           [openssl_init]
           ssl_conf = ssl_sect
