@@ -148,6 +148,20 @@ class CreateInvoice extends UseCase {
       const isAlreadyProcessedError = error.code === 10016 ||
         error.message?.includes('no se corresponde con el proximo a autorizar');
 
+      // Distinguish PERMANENT, order-level failures from TRANSIENT infrastructure
+      // failures. Permanent failures (AFIP rejected the invoice, the order is too
+      // old, the data is invalid, or the voucher already exists in AFIP) will not
+      // succeed on retry, so we record them as failed. Transient failures (TLS/DH
+      // handshake errors, network outages, AFIP being unreachable) MUST leave the
+      // order unprocessed so the next run retries it — otherwise a temporary AFIP
+      // outage permanently burns every order it touches.
+      const isPermanentOrderError =
+        isAlreadyProcessedError ||
+        error.code === 'AFIP_INVOICE_REJECTED' ||
+        error.name === 'DomainError' ||
+        error.name === 'ValidationError' ||
+        error instanceof DomainError;
+
       if (isAlreadyProcessedError) {
         logger.warn('Order may already have an invoice in AFIP', {
           error: error.message,
@@ -155,14 +169,22 @@ class CreateInvoice extends UseCase {
           suggestion: 'Check AFIP portal and use mark-manual command to sync database',
           event: 'possible_duplicate_invoice'
         });
-      } else {
+      } else if (isPermanentOrderError) {
         logger.error('Failed to create invoice', {
           error: error.message,
           orderNumber
         });
+      } else {
+        // Leave the order unprocessed so it is retried on the next run.
+        logger.error('Transient error creating invoice — order left unprocessed for retry', {
+          error: error.message,
+          orderNumber,
+          event: 'invoice_transient_failure'
+        });
+        throw error;
       }
 
-      // Mark order as failed if it exists
+      // Mark order as failed if it exists (permanent failures only)
       try {
         const order = await this.orderRepository.findByOrderNumber(orderNumber);
         if (order && !order.isProcessed()) {
