@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/amajail/dev-kit/main/schema/privacy-scan.schema.json",
+
+  "_comment": [
+    "Rules for the shared privacy scanner (amajail/dev-kit). The engine is shared;",
+    "these rules are not, because what counts as private differs per repo.",
+    "This repo holds AFIP tax credentials and real invoicing data, and it is PUBLIC.",
+    "Deliberately no real CUIT, cert name or invoice number appears below — the",
+    "patterns describe the SHAPE of private data, never an instance of it."
+  ],
+
+  "privatePaths": [
+    ["(^|/)certificates/", "an AFIP certificate or private key"],
+    ["\\.(crt|csr|key|pem|p12|pfx|jks)$", "certificate or key material"],
+    ["\\.(db|sqlite|sqlite3)$", "the local orders database"],
+    ["(^|/)logs/", "a runtime log, which records real invoice traffic"],
+    {
+      "pattern": "(^|/)data/",
+      "what": "real order or invoice data",
+      "unless": ["(^|/)data/sample-invoices\\.csv$"]
+    },
+    {
+      "pattern": "\\.(csv|xlsx|xls)$",
+      "what": "possibly a real invoice or exchange export",
+      "unless": ["(^|/)data/sample-invoices\\.csv$", "(^|/)tests?/", "\\.example\\.csv$"]
+    }
+  ],
+
+  "secretPatterns": [
+    ["BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY", "a private key"],
+    ["(?<!\\d)(20|23|24|27|30|33|34)-\\d{8}-\\d(?!\\d)", "a CUIT"],
+    ["(?<!\\d)(20|23|24|27|30|33|34)\\d{9}(?!\\d)", "a bare 11-digit CUIT"],
+    ["(?<!\\d)\\d{22}(?!\\d)", "a CBU (22-digit bank account number)"],
+    ["(?<!\\d)\\d{4}[ -]\\d{4}[ -]\\d{4}[ -]\\d{4}(?!\\d)", "a card number"],
+    ["(?i)\\bBINANCE_(API_KEY|API_SECRET|SECRET)\\b\\s*[:=]\\s*[\"']?[A-Za-z0-9]{16,}", "a Binance API credential"],
+    ["(?i)\\bAFIP_(CERT|KEY|PASSWORD|PASSPHRASE)\\b\\s*[:=]\\s*[\"']?\\S{8,}", "an AFIP credential"]
+  ],
+
+  "safePrefixes": [
+    "src/",
+    "tests/",
+    "dashboard/",
+    "docs/",
+    "scripts/",
+    "infra/",
+    "examples/",
+    "afip-documentation/",
+    ".github/",
+    ".claude/"
+  ],
+
+  "safeRootFiles": [
+    "package.json",
+    "package-lock.json",
+    ".gitignore",
+    "jest.config.js",
+    "jsconfig.json",
+    "host.json",
+    "_config.yml",
+    "README.md",
+    "CLAUDE.md",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "PROJECT_STATUS.md",
+    ".privacy-scan.json"
+  ],
+
+  "_selfExemptWhy": "This file necessarily contains the patterns it looks for, and a shaped-but-fake CUIT as the placeholder example. Exempt from CONTENT rules only — never from path rules.",
+  "selfExempt": ["(^|/)\\.privacy-scan\\.json$"],
+
+  "wording": {
+    "boundary": "AFIP certificates, private keys and real invoice data",
+    "placeholders": "placeholder values (CUIT 20-12345678-9, doc number 12345678)",
+    "confirm": "a real CUIT, certificate, or invoice figure",
+    "fixHint": "Real certificates belong in certificates/ (gitignored), never in the repo.\n  If this rule is wrong, fix it in .privacy-scan.json — do not work around it."
+  }
+}

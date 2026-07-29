@@ -39,9 +39,11 @@ data/processed-orders.json
 orders/
 orders/*.json
 
-# Generated CSV files (may contain personal data)
-data/orders-invoices.csv
-data/invoices.csv
+# Everything under data/ is real order or invoice data. Deny-by-default: naming
+# individual files left `data/january-invoices.csv` unignored, and this repo is
+# public. The one committed sample is re-allowed explicitly.
+data/*
+!data/sample-invoices.csv
 
 # Node.js
 node_modules/
