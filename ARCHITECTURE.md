@@ -2,11 +2,11 @@
 
 ## Overview
 
-The application follows **Clean Architecture** with four implemented layers and a planned API layer. Dependencies point inward — Domain has no external dependencies, and each outer layer only depends on the one immediately inside it.
+The application follows **Clean Architecture**. Dependencies point inward — Domain has no external dependencies, and each outer layer only depends on the one immediately inside it.
 
 ```
 ┌─────────────────────────────────────┐
-│    Presentation (CLI)               │  ← User Interface
+│  Presentation (CLI, Functions, SWA) │  ← User Interface
 ├─────────────────────────────────────┤
 │    Application (Use Cases)          │  ← Orchestration
 ├─────────────────────────────────────┤
@@ -55,8 +55,13 @@ Orchestrates domain and infrastructure. Defines ports (interfaces) that infrastr
 
 **Use Cases** (all extend `UseCase` base):
 - `FetchBinanceOrders` — fetches SELL orders for N days, stores new ones, skips duplicates
-- `CreateInvoice` — creates a single AFIP invoice for an order number
+- `CreateInvoice` — creates a single AFIP invoice for an order number. Splits failures into
+  *permanent* (AFIP rejection, `DomainError`, `ValidationError`, duplicate voucher) which are
+  recorded as failed, and *transient* (TLS/DH, network, AFIP unreachable) which are re-thrown so
+  the order stays unprocessed and is retried next run.
 - `ProcessUnprocessedOrders` — batch-runs `CreateInvoice` for all pending orders
+- `ProcessMonthOrders` — back-fills one `YYYY-MM`: resets that month's failed orders via
+  `resetForRetry()`, then re-invoices them with `skipAgeCheck` and **today's** invoice date
 - `GenerateMonthlyReport` — aggregates orders and invoices for a given month
 
 **DI Container** (`di/container.js`) — singleton factory that wires all infrastructure implementations to use-case constructors.
@@ -65,15 +70,18 @@ Orchestrates domain and infrastructure. Defines ports (interfaces) that infrastr
 
 External system adapters. Implements the application interfaces.
 
-**Repositories** (SQLite):
-- `SQLiteOrderRepository` — implements `IOrderRepository`. Hydrates `Order` domain objects from rows.
-- `SQLiteInvoiceRepository` — implements `IInvoiceRepository`.
+**Repositories** (Azure Table Storage):
+- `AzureOrderRepository` — implements `IOrderRepository`. Hydrates `Order` domain objects from entities.
+- `AzureInvoiceRepository` — implements `IInvoiceRepository`.
 
 **Gateways**:
 - `AfipGatewayAdapter` — implements `IAfipGateway`. Wraps the legacy `AfipService`.
 - `BinanceGatewayAdapter` — implements `IBinanceGateway`. Wraps the legacy `BinanceService`.
 
-**Database** (`src/database/Database.js`) — SQLite wrapper used by both repositories. Default path: `./data/afip-orders.db`.
+**Database** (`src/database/AzureTableDatabase.js`) — `@azure/data-tables` wrapper used by both
+repositories. Two tables, `orders` and `invoices`, from `AZURE_STORAGE_CONNECTION_STRING`. Orders are
+keyed `partitionKey = 'orders'`, `rowKey = orderNumber`, so `createEntity` + a swallowed 409 is the
+dedupe. The constructor refuses a non-Azurite connection string when `NODE_ENV=test`.
 
 ### CLI (`src/cli/`)
 
@@ -90,12 +98,33 @@ Presentation layer. Routes `process.argv` to use cases and formats output.
 | `report-stats` | `ReportCommand.showStatistics()` |
 | `process` | `ProcessCommand.processUnprocessedOrders()` |
 | `process <order>` | `ProcessCommand.processOrderByNumber(n)` |
-| `mark-manual` | `ProcessCommand.markOrderAsManual()` |
+| `process-month <y> <m>` | `ProcessCommand.processOrdersByMonth(y, m)` |
+| `mark-manual <order> <cae> [voucher]` | `ProcessCommand.markOrderAsManual()` |
 
 **Formatters**:
 - `ConsoleFormatter` — styled console output (success/error/warning/info/progress/header).
 - `TableFormatter` — ASCII table renderer.
 - `ReportFormatter` — monthly report and processing summary layouts.
+
+### HTTP (`src/functions/`)
+
+Azure Functions v4 programming model; `functions/index.js` just requires each handler module. Thin,
+like the CLI: parse → use case → JSON.
+
+| Route | Method | Handler |
+|---|---|---|
+| `/api/orders?month=YYYY-MM` | GET | reads `orders` + stats for the month (defaults to current) |
+| `/api/process-month` | POST | `{year, month}` → `ProcessMonthOrders` |
+
+Both are `authLevel: 'function'`, so the dashboard needs a function key. `processMonth` reconstructs
+the AFIP certificate and key from the `AFIP_CERT_B64`/`AFIP_KEY_B64` app settings into `os.tmpdir()`
+per request, sets `AFIP_CERT_PATH`/`AFIP_KEY_PATH`, and unlinks them in a `finally`. The DI container
+is required *inside* the handler, not at module load, so those paths exist before it wires up.
+
+### Dashboard (`dashboard/`)
+
+Astro static site on Azure Static Web Apps, styled with Tailwind v4 + `@amajail/ui` (pinned to a tag,
+never a branch). Built with `PUBLIC_API_URL` and `PUBLIC_FUNCTION_KEY` at deploy time.
 
 ### Shared (`src/shared/`)
 
@@ -136,12 +165,13 @@ src/
 │   ├── interfaces/                   # IOrderRepository, IInvoiceRepository, IAfipGateway, IBinanceGateway
 │   ├── use-cases/
 │   │   ├── binance/                  # FetchBinanceOrders
-│   │   ├── invoices/                 # CreateInvoice, ProcessUnprocessedOrders
+│   │   ├── invoices/                 # CreateInvoice, ProcessUnprocessedOrders, ProcessMonthOrders
 │   │   └── reports/                  # GenerateMonthlyReport
 │   └── di/                           # Container (dependency injection)
 ├── infrastructure/
-│   ├── repositories/                 # SQLiteOrderRepository, SQLiteInvoiceRepository
+│   ├── repositories/                 # AzureOrderRepository, AzureInvoiceRepository
 │   └── gateways/                     # AfipGatewayAdapter, BinanceGatewayAdapter
+├── functions/                        # Azure Functions HTTP triggers (orders, processMonth)
 ├── cli/
 │   ├── commands/                     # BinanceCommand, ProcessCommand, ReportCommand
 │   ├── formatters/                   # ConsoleFormatter, TableFormatter, ReportFormatter
@@ -154,8 +184,8 @@ src/
 │   ├── utils/                        # currency.utils, date.utils, format.utils
 │   └── validation/                   # validators.js
 ├── database/
-│   └── Database.js                   # SQLite wrapper
-└── services/                         # Legacy: AfipService, BinanceService, DirectInvoiceService
+│   └── AzureTableDatabase.js         # Azure Table Storage wrapper
+└── services/                         # Legacy: AfipService, BinanceService
 ```
 
 ## Legacy Layer
@@ -168,13 +198,10 @@ src/
 
 ## Business Rules
 
-**AFIP 10-Day Rule** — invoices must be created within 10 calendar days of the order date. Enforced by `InvoiceDateValidator`. Violations throw `DomainError`.
-
-**Type C Invoices** — `CbteTipo: 11`, no VAT, for monotributistas in simplified tax regime.
-
-**Service Invoicing** — `Concepto: 2` (services, not goods). Requires `FchServDesde` and `FchServHasta` dates.
-
-**Duplicate Prevention** — `order_number` has a UNIQUE constraint in the database. A failed attempt does not count as processed — failed orders are automatically retried on the next run.
+The AFIP rules and constants that must not be got wrong live in **`CLAUDE.md`** ("Read this first"
+and "Invoice constants"), so there is one copy. The structural half is here: `InvoiceDateValidator`
+enforces the 10-day rule, `OrderProcessor.canProcess()` gates eligibility, and duplicate prevention
+is the `rowKey = orderNumber` collision described under Infrastructure.
 
 ## Implementation Status
 
@@ -184,22 +211,25 @@ src/
 | 2 | Domain layer: entities, services, events | Complete |
 | 3 | Infrastructure: repositories and gateway adapters | Complete |
 | 4 | Application layer: use cases, DI container | Complete |
-| 5 | API layer: Azure Functions HTTP triggers | Planned — `src/api/` directories exist but are empty |
+| 5 | HTTP layer: Azure Functions triggers (`src/functions/`) | Complete |
 | 6 | CLI layer: refactored commands and formatters | Complete |
-| 7 | Integration and deployment | Partially complete (CI/CD done, Azure deployment pending) |
+| 7 | Integration and deployment | Complete — Function App, Static Web App and CI/CD all deploy from `main` |
 
 ## Testing
 
 ```
 tests/
-├── unit/
-│   ├── domain/           # 241+ tests — entities, value objects, services
-│   ├── application/      # Use case tests
-│   ├── cli/              # Formatter tests
-│   ├── shared/           # Config, utils, errors, logging
-│   └── services/         # Legacy service tests
-└── integration/
-    └── database/         # SQLite integration tests (in-memory DB)
+├── helpers/              # test-setup.js
+└── unit/
+    ├── domain/           # entities, value objects, services
+    ├── application/      # use case tests
+    ├── infrastructure/   # repository tests
+    ├── database/         # AzureTableDatabase (incl. the NODE_ENV=test storage guard)
+    ├── cli/              # formatter tests
+    ├── shared/           # config, utils, errors, logging
+    └── services/         # legacy service tests
 ```
 
-Coverage threshold: **57%** across branches, functions, lines, and statements (enforced by Jest).
+Everything is unit-level and mocked; there is no `tests/integration/` directory, so the
+`test:integration` script currently matches nothing. Coverage threshold: **57%** across branches,
+functions, lines and statements (enforced by Jest, `src/functions/**` excluded from collection).

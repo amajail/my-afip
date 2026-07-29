@@ -7,7 +7,7 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@amajail/ui": "github:amajail/amajail-ui#master",
+    "@amajail/ui": "github:amajail/amajail-ui#v0.1.0",
     "@tailwindcss/vite": "^4.1.4",
     "astro": "^5.7.13",
     "tailwindcss": "^4.1.4"
