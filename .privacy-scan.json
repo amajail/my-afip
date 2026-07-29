@@ -26,6 +26,19 @@
     }
   ],
 
+  "_privatePathExceptionsWhy": [
+    "All three are denied by the BUILT-IN `.env` rule, and a rule's own `unless`",
+    "cannot reach a default — hence this list rather than an `unless`. `.env.example`",
+    "and `dashboard/.env.example` are the committed templates listing which variables",
+    "to set, values elided; `dashboard/.env.production` is the public dashboard's",
+    "build-time API URL, un-ignored in .gitignore for that reason. Anchored to those",
+    "exact names, so a real `.env`, `.env.local` or root `.env.production` stay denied."
+  ],
+  "privatePathExceptions": [
+    "(^|/)\\.env\\.example$",
+    "(^|/)dashboard/\\.env\\.production$"
+  ],
+
   "secretPatterns": [
     ["BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY", "a private key"],
     ["(?<!\\d)(20|23|24|27|30|33|34)-\\d{8}-\\d(?!\\d)", "a CUIT"],
