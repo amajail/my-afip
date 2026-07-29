@@ -1,11 +1,33 @@
 const { TableClient } = require('@azure/data-tables');
 
+/**
+ * Determine whether a connection string targets the local Azurite emulator
+ * rather than a real Azure Storage account.
+ * @param {string} connectionString
+ * @returns {boolean}
+ */
+function isEmulatorConnectionString(connectionString) {
+  return /UseDevelopmentStorage=true/i.test(connectionString) ||
+    /devstoreaccount1/i.test(connectionString);
+}
+
 class AzureTableDatabase {
   constructor() {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
     if (!connectionString) {
       throw new Error('AZURE_STORAGE_CONNECTION_STRING is required');
     }
+
+    // Safety guard: never allow the test suite to connect to a real Azure
+    // Storage account. Tests must use the Azurite emulator (or fully mock this
+    // class). This prevents test fixtures from polluting production storage.
+    if (process.env.NODE_ENV === 'test' && !isEmulatorConnectionString(connectionString)) {
+      throw new Error(
+        'Refusing to connect to non-emulator Azure Storage while NODE_ENV=test. ' +
+        'Use an emulator connection string (UseDevelopmentStorage=true) or mock AzureTableDatabase.'
+      );
+    }
+
     this.ordersClient = TableClient.fromConnectionString(connectionString, 'orders');
     this.invoicesClient = TableClient.fromConnectionString(connectionString, 'invoices');
   }
@@ -79,6 +101,16 @@ class AzureTableDatabase {
     return 1;
   }
 
+  async deleteOrder(orderNumber) {
+    try {
+      await this.ordersClient.deleteEntity('orders', String(orderNumber));
+      return 1;
+    } catch (error) {
+      if (error.statusCode === 404) return 0;
+      throw error;
+    }
+  }
+
   async getOrderByNumber(orderNumber) {
     try {
       const entity = await this.ordersClient.getEntity('orders', String(orderNumber));
@@ -126,6 +158,14 @@ class AzureTableDatabase {
       }
     }
     return rows.sort((a, b) => Number(a.create_time) - Number(b.create_time));
+  }
+
+  async getAllOrders() {
+    const rows = [];
+    for await (const entity of this.ordersClient.listEntities()) {
+      rows.push(this._entityToRow(entity));
+    }
+    return rows;
   }
 
   async getOrdersByMonth(yearMonth) {
