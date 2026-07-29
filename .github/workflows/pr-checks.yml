@@ -11,6 +11,23 @@ on:
       - develop
 
 jobs:
+  # The fail-closed half of the privacy guard. .gitignore stops accidents and the
+  # Claude Code hook only ever sees Claude's git commands — this sees everything
+  # that reaches a PR, whoever produced it. Rules live in .privacy-scan.json;
+  # the engine is shared with my-finances and my-expenses via amajail/dev-kit.
+  privacy:
+    name: Privacy scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan changed lines for certificates, CUITs and credentials
+        uses: amajail/dev-kit/actions/privacy-scan@v1
+
   build-and-test:
     runs-on: ubuntu-latest
     

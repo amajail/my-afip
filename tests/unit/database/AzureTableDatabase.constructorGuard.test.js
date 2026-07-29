@@ -1,3 +1,10 @@
+// privacy-scan: allow-secrets
+// This file asserts on connection-string PARSING, so it necessarily contains
+// connection-string-shaped strings. Every one is fabricated (AccountKey=secret,
+// AccountKey=key). Do not paste a real connection string here — the pragma above
+// switches the credential check off for this file only, and
+// `grep -rn 'privacy-scan: allow'` lists every exemption in the repo.
+
 jest.mock('@azure/data-tables', () => ({
   TableClient: {
     fromConnectionString: jest.fn().mockReturnValue({}),
