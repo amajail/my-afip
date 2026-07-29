@@ -24,7 +24,7 @@ filing. Layering and file-by-file detail live in `ARCHITECTURE.md`; AFIP web-ser
 4. **Only a *transient* failure may leave an order unprocessed.** `CreateInvoice` re-throws TLS/network
    errors so the next run retries them, and records only AFIP rejections / `DomainError` /
    `ValidationError` as permanently failed. Widening that "permanent" branch means one AFIP outage
-   burns every order it touched, forever.
+   burns every order it touched, forever. (Only `tradeType === 'SELL'` is invoicable at all.)
 5. **AFIP's WSFEv1 endpoint negotiates a ≤1024-bit DH key** that Node/OpenSSL 3 rejects
    (`dh key too small`). The fix is an `OPENSSL_CONF` with `@SECLEVEL=0` that sets **both**
    `openssl_conf` and `nodejs_conf` — Node reads its config under the `nodejs_conf` appname and
@@ -52,14 +52,6 @@ filing. Layering and file-by-file detail live in `ARCHITECTURE.md`; AFIP web-ser
   means the certificate is not associated with the wsfe service in the AFIP portal; propagation takes
   24–48 h, so don't respond by regenerating the certificate.
 
-## Data model
-
-Azure Table Storage via `@azure/data-tables`; two tables, `orders` and `invoices`. An order is
-`partitionKey = 'orders'`, `rowKey = orderNumber` — **that is the dedupe**: `insertOrder` calls
-`createEntity` and swallows the 409, so re-fetching an overlapping date range is free. Only
-`tradeType === 'SELL'` is invoicable. A permanently-failed order keeps its row with `success: false`
-and is revived by `resetForRetry()` on the next `process-month`.
-
 ## Commands (`node src/index.js <command>`, or the npm aliases)
 
 ```bash
@@ -81,9 +73,7 @@ autorizar" warning, which means AFIP already has the voucher but this table does
 
 ## Deploys
 
-- `src/functions/` → Azure Function `my-afip-func`: `GET /api/orders?month=YYYY-MM` and
-  `POST /api/process-month`, both `authLevel: 'function'`. Certificates are reconstructed from the
-  `_B64` settings into a temp file per request and unlinked after.
-- `dashboard/` (Astro) → Azure Static Web Apps. `@amajail/ui` is pinned to a **tag**, never a branch.
+- `src/functions/` → Azure Function `my-afip-func`; `dashboard/` (Astro) → Azure Static Web Apps.
+  Routes, auth level and per-request certificate reconstruction: `ARCHITECTURE.md` §HTTP.
 - To reprocess a month in production, use `weekly-invoicing.yml`'s `reprocess_month` input (`YYYY-MM`)
   rather than running against production storage from a laptop.
