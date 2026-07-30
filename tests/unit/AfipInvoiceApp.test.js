@@ -1,9 +1,4 @@
 // Mock all dependencies BEFORE imports
-jest.mock('sqlite3', () => ({
-  verbose: jest.fn(() => ({
-    Database: jest.fn()
-  }))
-}));
 jest.mock('facturajs', () => ({
   AfipServices: jest.fn()
 }));
