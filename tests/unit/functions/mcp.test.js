@@ -17,11 +17,6 @@ jest.mock('../../../src/application/di/container', () => ({
   getOrderRepository: jest.fn(),
   getGenerateMonthlyReportUseCase: jest.fn(),
 }));
-jest.mock('../../../src/utils/logger', () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-}));
 
 const { app } = require('@azure/functions');
 const container = require('../../../src/application/di/container');

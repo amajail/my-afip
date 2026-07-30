@@ -25,9 +25,19 @@
  */
 
 const { app } = require('@azure/functions');
-const container = require('../application/di/container');
-const logger = require('../utils/logger');
 const { ValidationError } = require('../shared/errors');
+
+// The container and utils/logger both walk to shared/config, which throws on
+// missing AFIP_* env vars — and the deployed Function App does not set
+// AFIP_CERT_PATH (certs arrive as AFIP_CERT_B64, reconstructed per request).
+// Requiring either at module scope fails the worker's entry-point load and
+// de-indexes EVERY function, /api/* included. So: container resolved per call,
+// and logging via the invocation context, like the sibling HTTP handlers.
+let _container;
+function container() {
+  _container = _container || require('../application/di/container');
+  return _container;
+}
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -47,7 +57,9 @@ function tool(toolName, fn) {
       const result = await fn(args);
       return JSON.stringify(result);
     } catch (err) {
-      logger.error(`MCP tool ${toolName} failed`, { error: err && err.message });
+      if (context && typeof context.error === 'function') {
+        context.error(`MCP tool ${toolName} failed:`, err && err.message);
+      }
       return JSON.stringify({
         error: (err && err.message) || 'unknown error',
         code: (err && err.name) || undefined,
@@ -101,7 +113,7 @@ function invoiceDateOf(order) {
  * @returns {Promise<{newestOrderDate: string|null, ageDays: number|null}>}
  */
 async function tableFreshness() {
-  const newestOrderDate = await container.getOrderRepository().findNewestOrderDate();
+  const newestOrderDate = await container().getOrderRepository().findNewestOrderDate();
   if (!newestOrderDate) {
     return { newestOrderDate: null, ageDays: null };
   }
@@ -131,7 +143,7 @@ app.mcpTool('mcpListOrders', {
   handler: tool('list_orders', async (args) => {
     const { month, year, monthNumber } = parseMonth(args.month);
     const [report, freshness] = await Promise.all([
-      container.getGenerateMonthlyReportUseCase().execute({ year, month: monthNumber }),
+      container().getGenerateMonthlyReportUseCase().execute({ year, month: monthNumber }),
       tableFreshness(),
     ]);
     const orders = report.orders.map((o) => ({
@@ -169,7 +181,7 @@ app.mcpTool('mcpListInvoices', {
   handler: tool('list_invoices', async (args) => {
     const { month } = parseMonth(args.month);
     const [invoicedOrders, freshness] = await Promise.all([
-      container.getOrderRepository().findSuccessfullyInvoiced(),
+      container().getOrderRepository().findSuccessfullyInvoiced(),
       tableFreshness(),
     ]);
     const invoices = invoicedOrders
@@ -207,7 +219,7 @@ app.mcpTool('mcpMonthlyIncome', {
   handler: tool('monthly_income', async (args) => {
     const { month, year, monthNumber } = parseMonth(args.month);
     const { startDate, endDate } = monthRange(year, monthNumber);
-    const orderRepository = container.getOrderRepository();
+    const orderRepository = container().getOrderRepository();
     const [monthOrders, invoicedOrders, freshness] = await Promise.all([
       orderRepository.findByDateRange(startDate, endDate),
       orderRepository.findSuccessfullyInvoiced(),
