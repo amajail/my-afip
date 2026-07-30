@@ -129,6 +129,50 @@ class AzureOrderRepository extends IOrderRepository {
   }
 
   /**
+   * Find all successfully invoiced orders (processed with success === true),
+   * across all months. Rows that fail entity validation are skipped with a
+   * warning, like findUnprocessed().
+   * @returns {Promise<Order[]>} Successfully invoiced orders
+   */
+  async findSuccessfullyInvoiced() {
+    await this.initialize();
+
+    const rows = await this.db.getSuccessfullyProcessedOrders();
+    const orders = [];
+    for (const row of rows) {
+      try {
+        orders.push(this._fromDatabase(row));
+      } catch (error) {
+        logger.warn('Skipping invalid order row during deserialization', {
+          orderNumber: row.order_number,
+          error: error.message,
+          event: 'order_deserialization_failed'
+        });
+      }
+    }
+    return orders;
+  }
+
+  /**
+   * Find the order date of the newest order in the whole table (any month).
+   * Freshness signal for the local-only Binance fetch: a stale value means
+   * recent orders were never fetched.
+   * @returns {Promise<string|null>} Newest order date (YYYY-MM-DD) or null when empty
+   */
+  async findNewestOrderDate() {
+    await this.initialize();
+
+    const rows = await this.db.getAllOrders();
+    let newest = null;
+    for (const row of rows) {
+      if (row.order_date && (!newest || row.order_date > newest)) {
+        newest = row.order_date;
+      }
+    }
+    return newest;
+  }
+
+  /**
    * Find failed orders for a given month
    * @param {string} yearMonth - Month in YYYY-MM format
    * @returns {Promise<Order[]>} Failed orders for the month

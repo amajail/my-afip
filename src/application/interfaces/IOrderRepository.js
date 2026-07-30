@@ -52,6 +52,24 @@ class IOrderRepository {
   }
 
   /**
+   * Find all successfully invoiced orders (any month)
+   * @returns {Promise<Order[]>} Successfully invoiced orders
+   * @abstract
+   */
+  async findSuccessfullyInvoiced() {
+    throw new Error('Method not implemented: findSuccessfullyInvoiced');
+  }
+
+  /**
+   * Find the order date of the newest order in the whole table
+   * @returns {Promise<string|null>} Newest order date (YYYY-MM-DD) or null
+   * @abstract
+   */
+  async findNewestOrderDate() {
+    throw new Error('Method not implemented: findNewestOrderDate');
+  }
+
+  /**
    * Find orders by trade type
    * @param {string} tradeType - 'BUY' or 'SELL'
    * @returns {Promise<Order[]>} Orders of specified type
