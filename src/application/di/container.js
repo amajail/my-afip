@@ -8,8 +8,11 @@
 // Infrastructure
 const AzureOrderRepository = require('../../infrastructure/repositories/AzureOrderRepository');
 const AzureInvoiceRepository = require('../../infrastructure/repositories/AzureInvoiceRepository');
-const AfipGatewayAdapter = require('../../infrastructure/gateways/AfipGatewayAdapter');
-const BinanceGatewayAdapter = require('../../infrastructure/gateways/BinanceGatewayAdapter');
+// The gateway adapters are required inside their getters, not here: their
+// service imports walk to shared/config, which eagerly validates AFIP cert
+// env vars. The deployed Function App has no AFIP_CERT_PATH (certs arrive as
+// AFIP_CERT_B64, per-request), so a top-level require makes this module — and
+// everything that composes through it, like the MCP tools — unloadable there.
 
 // Use Cases
 const FetchBinanceOrders = require('../use-cases/binance/FetchBinanceOrders');
@@ -63,6 +66,7 @@ class Container {
    * @returns {IAfipGateway}
    */
   getAfipGateway(afipService = null) {
+    const AfipGatewayAdapter = require('../../infrastructure/gateways/AfipGatewayAdapter');
     if (!afipService && !this._singletons.has('afipGateway')) {
       const gateway = new AfipGatewayAdapter();
       this._singletons.set('afipGateway', gateway);
@@ -78,6 +82,7 @@ class Container {
    * @returns {IBinanceGateway}
    */
   getBinanceGateway(binanceService = null) {
+    const BinanceGatewayAdapter = require('../../infrastructure/gateways/BinanceGatewayAdapter');
     if (!binanceService && !this._singletons.has('binanceGateway')) {
       const gateway = new BinanceGatewayAdapter();
       this._singletons.set('binanceGateway', gateway);

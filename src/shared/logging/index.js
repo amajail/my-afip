@@ -11,11 +11,14 @@ const Logger = require('./Logger');
 const ConsoleLogger = require('./loggers/ConsoleLogger');
 const ApplicationInsightsLogger = require('./loggers/ApplicationInsightsLogger');
 const LoggerFactory = require('./LoggerFactory');
-const config = require('../config');
 
-// Create default logger instance using factory
+// LOG_LEVEL is read straight from the env (same default as shared/config's
+// app.logLevel) instead of via require('../config'): that module eagerly
+// validates AFIP cert vars the deployed Function App does not set, so a
+// logger that drags it in throws in every module that logs — which is how
+// the MCP tools returned config errors on a box where /api/* works fine.
 const defaultLogger = LoggerFactory.createLogger({
-  level: config.app.logLevel
+  level: process.env.LOG_LEVEL || 'info'
 });
 
 module.exports = {
