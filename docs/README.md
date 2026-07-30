@@ -21,7 +21,6 @@ This directory contains all project documentation organized by category.
 ## Migrations (Planned)
 
 - [TypeScript Migration](migrations/typescript.md) — Analysis and phased plan
-- [Azure Migration](migrations/azure.md) — Azure Functions and Table Storage migration plan
 
 ## Testing
 
@@ -30,10 +29,12 @@ This directory contains all project documentation organized by category.
 
 ## Roadmap
 
-- [Critical Improvements](roadmap/critical-improvements.md) — Prioritized improvements
-- [Pending Changes](roadmap/pending-changes.md) — Backlog
-- [Frontend Proposal](roadmap/frontend-proposal.md) — React SPA proposal
+- [Critical Improvements](roadmap/critical-improvements.md) — Superseded 2025 action plan (see header note)
+- [Dashboard](roadmap/dashboard.md) — Dashboard slice plan
 
 ## Project History
 
 - [Changelog](CHANGELOG.md) — Version history
+- [Azure Migration](archive/azure.md) — Completed Azure Functions and Table Storage migration plan
+- [Pending Changes](archive/pending-changes.md) — Archived backlog
+- [Frontend Proposal](archive/frontend-proposal.md) — Archived React SPA proposal
