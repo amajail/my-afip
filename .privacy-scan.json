@@ -39,13 +39,31 @@
     "(^|/)dashboard/\\.env\\.production$"
   ],
 
+  "_secretPatternsWhy": [
+    "The two CUIT rules skip the repo's one declared placeholder BODY, 12345678 — not a list",
+    "of whole values. CUIT.test.js walks every legal prefix (20|23|24|27|30|33|34) against that",
+    "body with both the right and a wrong check digit, so a value list would need ~15 entries and",
+    "would go stale the next time a prefix is added. Exempting the body covers all of them and",
+    "stays tight: any other 8-digit body still fires, including the owner's real CUIT.",
+    "Before this, 60 of 64 --tracked findings were this placeholder — a rule that noisy is one",
+    "people learn to bypass, and it made every edit to those ~10 files fail CI.",
+    "The lookahead sits at the match position, not on the whole line, so a real CUIT sharing a",
+    "line with a placeholder is still caught.",
+    "",
+    "The Binance name is matched as BINANCE_<anything>(KEY|SECRET), not an explicit list:",
+    "`\\bBINANCE_SECRET\\b` cannot match BINANCE_SECRET_KEY, since `_` is a word character",
+    "and so there is no boundary after SECRET. That gap let a real BINANCE_SECRET_KEY sit",
+    "in a tracked doc while the BINANCE_API_KEY on the line above it was flagged.",
+    "The value class stays [A-Za-z0-9] with no `_`, which is what keeps the committed",
+    "`your_binance_secret_key_here` templates from firing — `your` is 4 chars, not 16."
+  ],
   "secretPatterns": [
     ["BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY", "a private key"],
-    ["(?<!\\d)(20|23|24|27|30|33|34)-\\d{8}-\\d(?!\\d)", "a CUIT"],
-    ["(?<!\\d)(20|23|24|27|30|33|34)\\d{9}(?!\\d)", "a bare 11-digit CUIT"],
+    ["(?<!\\d)(?!(20|23|24|27|30|33|34)-12345678-\\d)(20|23|24|27|30|33|34)-\\d{8}-\\d(?!\\d)", "a CUIT"],
+    ["(?<!\\d)(?!(20|23|24|27|30|33|34)12345678\\d)(20|23|24|27|30|33|34)\\d{9}(?!\\d)", "a bare 11-digit CUIT"],
     ["(?<!\\d)\\d{22}(?!\\d)", "a CBU (22-digit bank account number)"],
     ["(?<!\\d)\\d{4}[ -]\\d{4}[ -]\\d{4}[ -]\\d{4}(?!\\d)", "a card number"],
-    ["(?i)\\bBINANCE_(API_KEY|API_SECRET|SECRET)\\b\\s*[:=]\\s*[\"']?[A-Za-z0-9]{16,}", "a Binance API credential"],
+    ["(?i)\\bBINANCE_[A-Z_]*(KEY|SECRET)\\b\\s*[:=]\\s*[\"']?[A-Za-z0-9]{16,}", "a Binance API credential"],
     ["(?i)\\bAFIP_(CERT|KEY|PASSWORD|PASSPHRASE)\\b\\s*[:=]\\s*[\"']?\\S{8,}", "an AFIP credential"]
   ],
 
@@ -83,7 +101,7 @@
 
   "wording": {
     "boundary": "AFIP certificates, private keys and real invoice data",
-    "placeholders": "placeholder values (CUIT 20-12345678-9, doc number 12345678)",
+    "placeholders": "a CUIT built on the placeholder body 12345678 (20123456786 is the checksum-valid one), doc number 12345678",
     "confirm": "a real CUIT, certificate, or invoice figure",
     "fixHint": "Real certificates belong in certificates/ (gitignored), never in the repo.\n  If this rule is wrong, fix it in .privacy-scan.json — do not work around it."
   }
