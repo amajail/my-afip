@@ -1,5 +1,9 @@
 # Critical Code Quality Improvements - Prioritized Action Plan
 
+> **SUPERSEDED** — This 2025 plan is no longer maintained. Current planning
+> lives in the family roadmap: `ROADMAP.md` in
+> [amajail/dev-kit](https://github.com/amajail/dev-kit). Kept for history only.
+
 **Date**: 2025-11-08
 **Status**: Based on ../development/code-quality.md
 

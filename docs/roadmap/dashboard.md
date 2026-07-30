@@ -34,7 +34,7 @@ Read-only monitoring dashboard for monthly Binance P2P orders and AFIP invoice s
 
 ### Manual setup after merging
 
-1. Create an Azure Function App (Node 20, Consumption plan) via Azure portal or `infra/main.tf`
+1. Create an Azure Function App (Node 20, Consumption plan) via the Azure portal (there is no IaC in this repo)
 2. Add the four secrets above to repo Settings → Secrets → Actions
 3. Set GitHub Pages source to **GitHub Actions** in repo Settings → Pages
 4. Trigger `deploy-azure-function.yml` via `workflow_dispatch`

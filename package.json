@@ -29,7 +29,6 @@
     "axios": "^1.12.2",
     "dotenv": "^17.2.2",
     "facturajs": "^0.3.2",
-    "sqlite3": "^5.1.7",
     "winston": "^3.18.3"
   },
   "devDependencies": {

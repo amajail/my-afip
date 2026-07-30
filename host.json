@@ -3,5 +3,12 @@
   "extensionBundle": {
     "id": "Microsoft.Azure.Functions.ExtensionBundle",
     "version": "[4.*, 5.0.0)"
+  },
+  "extensions": {
+    "mcp": {
+      "instructions": "Read-only access to the owner's Binance P2P orders and AFIP invoices: list_orders and list_invoices for one month, and monthly_income for the invoiced/sold ARS summary. All three take month as YYYY-MM and return plain ARS numbers. There are NO write tools — invoicing runs via CLI/cron only. Every response includes tableFreshness (age in days of the newest fetched order): the Binance fetch only runs on the owner's machine, so a high ageDays means the table is stale and income figures under-report — flag that instead of trusting the numbers.",
+      "serverName": "my-afip",
+      "serverVersion": "1.0.0"
+    }
   }
 }
