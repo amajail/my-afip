@@ -72,7 +72,7 @@ class AfipService {
    *
    * @example
    * const service = new AfipService({
-   *   cuit: '20307153867',
+   *   cuit: '20123456786',
    *   environment: 'production',
    *   certPath: './certificates/cert.crt',
    *   keyPath: './certificates/private.key'
@@ -389,7 +389,7 @@ class AfipService {
    * @returns {Promise<TaxpayerValidationResult>} Validation result
    *
    * @example
-   * const result = await service.validateTaxpayer('20307153867');
+   * const result = await service.validateTaxpayer('20123456786');
    * if (result.valid) {
    *   console.log('Taxpayer is valid');
    * } else {

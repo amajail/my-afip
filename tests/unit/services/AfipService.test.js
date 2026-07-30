@@ -42,7 +42,7 @@ describe('AfipService', () => {
     AfipServices.mockImplementation(() => mockAfipSDK);
 
     service = new AfipService({
-      cuit: '20307153867', // Valid test CUIT with correct checksum
+      cuit: '20123456786', // Valid test CUIT with correct checksum
       environment: 'testing',
       certPath: './test-cert.crt',
       keyPath: './test-key.key'
@@ -66,7 +66,7 @@ describe('AfipService', () => {
 
     it('should set production mode for production environment', async () => {
       const prodService = new AfipService({
-        cuit: '20307153867', // Valid test CUIT with correct checksum
+        cuit: '20123456786', // Valid test CUIT with correct checksum
         environment: 'production',
         certPath: process.env.AFIP_CERT_PATH, // Use test cert path
         keyPath: process.env.AFIP_KEY_PATH    // Use test key path
