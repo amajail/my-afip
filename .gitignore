@@ -1,5 +1,7 @@
-# Claude Code local session files
-.claude/
+# Claude Code local session files. Note `.claude/*` not `.claude/` — skills
+# are shared/committed, everything else (settings, session state) stays local.
+.claude/*
+!.claude/skills/
 
 # Environment variables (contains sensitive data)
 .env
