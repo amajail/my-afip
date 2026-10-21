@@ -75,9 +75,11 @@ class ReportCommand {
     try {
       await dbTracker.initialize();
 
-      const orders = await dbTracker.getOrdersByStatus(
-        status === 'success' ? 'Success' : status === 'failed' ? 'Failed' : 'Pending'
-      );
+      const orders = status === 'success'
+        ? await dbTracker.getOrdersByStatus(true)
+        : status === 'failed'
+          ? await dbTracker.getOrdersByStatus(false)
+          : await dbTracker.getUnprocessedOrders();
 
       ConsoleFormatter.header(`Orders with status: ${status.toUpperCase()}`);
 
@@ -189,12 +191,24 @@ class ReportCommand {
       orderDate: order.order_date,
       invoiceDate: order.invoice_date,
       totalPrice: order.total_price,
-      processing_status: order.status?.toLowerCase() || 'pending',
+      processing_status: this._deriveStatus(order),
       processing_method: order.processing_method,
       cae: order.cae,
       voucherNumber: order.voucher_number,
       error_message: order.error_message
     }));
+  }
+
+  /**
+   * Derive a 'success' | 'failed' | 'pending' label from a raw order row.
+   * Rows from getOrdersByMonth already carry a `.status` string; rows from
+   * getOrdersByStatus/getUnprocessedOrders only carry `processed_at`/`success`.
+   * @private
+   */
+  static _deriveStatus(order) {
+    if (order.status) return order.status.toLowerCase();
+    if (!order.processed_at) return 'pending';
+    return order.success === 1 ? 'success' : 'failed';
   }
 
   /**
